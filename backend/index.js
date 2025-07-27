@@ -19,7 +19,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 app.use(cors({
-    origin: "http://localhost:5173", // Only allow frontend origin
+    origin: process.env.PRODUCTION_URL || "http://localhost:3000", 
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
