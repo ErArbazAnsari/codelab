@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useLocation } from "react-router-dom";
+import { useTheme } from "./utils/ThemeContext.jsx";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
@@ -25,45 +25,22 @@ import Logout from "./pages/Logout";
 
 function App() {
     const dispatch = useDispatch();
-    const { isAuthenticated, user } = useSelector(
-        (state) => state.auth
-    );
-
-
-    // List of public routes (including dynamic bases)
-    const publicRoutes = [
-        "/",
-        "/login",
-        "/signup",
-        "/contests",
-        "/discuss",
-        "/settings",
-        "/problems",
-        "/leaderboard",
-        "/problem/",
-        "/discussions/",
-    ];
-    const location = useLocation();
-    const currentPath = location.pathname;
-    const isPublicRoute = publicRoutes.some((route) =>
-        route.endsWith("/")
-            ? currentPath.startsWith(route)
-            : currentPath === route
-    );
-
-    // Only check auth on mount for protected routes
-    useEffect(() => {
-        if (!isPublicRoute) {
-            dispatch(checkAuth());
-        }
-    }, [dispatch, isPublicRoute]);
-
-
+    const { isAuthenticated, user } = useSelector((state) => state.auth);
 
     return (
         <ThemeProvider>
-            <>
-                <Navbar />
+            <ThemeConsumerApp isAuthenticated={isAuthenticated} user={user} />
+        </ThemeProvider>
+    );
+
+}
+
+function ThemeConsumerApp({ isAuthenticated, user }) {
+    const { theme } = useTheme();
+    return (
+        <div className={`min-h-screen w-full transition-colors duration-500 ${theme === "dark" ? "bg-gradient-to-br from-[#18181c] via-[#23232a] to-[#18181c] text-white" : "bg-gradient-to-br from-[#f8fafc] via-[#e2e8f0] to-[#f8fafc] text-gray-900"}`}>
+            <Navbar />
+            <main className="container mx-auto px-2 py-4">
                 <Routes>
                     {/* Public routes */}
                     <Route path="/" element={<Homepage />} />
@@ -74,80 +51,19 @@ function App() {
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/problems" element={<Problems />} />
                     <Route path="/leaderboard" element={<Leaderboard />} />
-                    <Route
-                        path="/problem/:problemId"
-                        element={<ProblemPage />}
-                    />
-                    <Route
-                        path="/discussions/:problemId"
-                        element={<DiscussionForum />}
-                    />
+                    <Route path="/problem/:problemId" element={<ProblemPage />} />
+                    <Route path="/discussions/:problemId" element={<DiscussionForum />} />
                     <Route path="/logout" element={<Logout />} />
-
                     {/* Protected routes */}
-                    <Route
-                        path="/admin"
-                        element={
-                            isAuthenticated && user?.role === "admin" ? (
-                                <Admin />
-                            ) : (
-                                <Navigate to="/login" />
-                            )
-                        }
-                    />
-                    <Route
-                        path="/admin/create"
-                        element={
-                            isAuthenticated && user?.role === "admin" ? (
-                                <AdminPanel />
-                            ) : (
-                                <Navigate to="/login" />
-                            )
-                        }
-                    />
-                    <Route
-                        path="/admin/delete"
-                        element={
-                            isAuthenticated && user?.role === "admin" ? (
-                                <AdminDelete />
-                            ) : (
-                                <Navigate to="/login" />
-                            )
-                        }
-                    />
-                    <Route
-                        path="/admin/video"
-                        element={
-                            isAuthenticated && user?.role === "admin" ? (
-                                <AdminVideo />
-                            ) : (
-                                <Navigate to="/login" />
-                            )
-                        }
-                    />
-                    <Route
-                        path="/admin/upload/:problemId"
-                        element={
-                            isAuthenticated && user?.role === "admin" ? (
-                                <AdminUpload />
-                            ) : (
-                                <Navigate to="/login" />
-                            )
-                        }
-                    />
-                    <Route
-                        path="/profile"
-                        element={
-                            isAuthenticated ? (
-                                <UserProfile />
-                            ) : (
-                                <Navigate to="/login" />
-                            )
-                        }
-                    />
+                    <Route path="/admin" element={isAuthenticated && user?.role === "admin" ? <Admin /> : <Navigate to="/login" />} />
+                    <Route path="/admin/create" element={isAuthenticated && user?.role === "admin" ? <AdminPanel /> : <Navigate to="/login" />} />
+                    <Route path="/admin/delete" element={isAuthenticated && user?.role === "admin" ? <AdminDelete /> : <Navigate to="/login" />} />
+                    <Route path="/admin/video" element={isAuthenticated && user?.role === "admin" ? <AdminVideo /> : <Navigate to="/login" />} />
+                    <Route path="/admin/upload/:problemId" element={isAuthenticated && user?.role === "admin" ? <AdminUpload /> : <Navigate to="/login" />} />
+                    <Route path="/profile" element={isAuthenticated ? <UserProfile /> : <Navigate to="/login" />} />
                 </Routes>
-            </>
-        </ThemeProvider>
+            </main>
+        </div>
     );
 }
 

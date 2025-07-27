@@ -54,76 +54,80 @@ function Homepage() {
     }
 
     return (
-        <div className={`min-h-screen ${theme === 'dark' ? 'bg-pureblack text-lightgray' : 'bg-base-100'} transition-colors duration-300`}>
+        <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-[#18181c] via-[#23232a] to-[#18181c] text-lightgray' : 'bg-base-100 text-base-content'}`}>
             <div className="container mx-auto max-w-6xl px-4 py-10 md:py-12 lg:py-16">
                 {/* Hero Section */}
-                <div className="hero bg-gradient-to-r from-primary to-secondary rounded-3xl text-primary-content mb-10 shadow-xl">
-                    <div className="hero-content flex flex-col md:flex-row items-center justify-between py-10 px-6 gap-8">
-                        <div className="max-w-lg text-left">
-                            <h1 className="mb-5 text-5xl font-bold leading-tight">
+                <div className={`hero rounded-3xl mb-10 shadow-xl flex items-center justify-center ${theme === 'dark' ? 'bg-[rgba(30,30,40,0.90)] backdrop-blur-lg border border-[#3b3b4d]' : 'bg-gradient-to-r from-primary to-secondary text-primary-content'}`}> 
+                    <div className="hero-content flex flex-col md:flex-row items-center justify-between py-12 px-8 gap-8 w-full">
+                        <div className="max-w-lg text-left flex-1">
+                            <h1 className="mb-5 text-5xl font-bold leading-tight drop-shadow-lg">
                                 Level up your coding skills and quickly land a job
                             </h1>
-                            <p className="mb-5 text-lg">
+                            <p className="mb-5 text-lg opacity-90">
                                 This is the best place to expand your knowledge and get prepared for your next interview.
                             </p>
-                            <NavLink to="/problems" className="btn btn-accent btn-lg shadow-md">
+                            <NavLink to="/problems" className="btn btn-accent btn-lg shadow-md flex items-center gap-2">
                                 <BookOpen className="w-5 h-5 mr-2" />
                                 Explore Problems
                             </NavLink>
                         </div>
-                        <div className="hidden md:block ml-12">
-                            <img src="/public/vite.svg" alt="Coding" className="w-64 h-64 object-contain drop-shadow-lg" />
+                        <div className="hidden md:block ml-12 flex-1 flex justify-center">
+                            <img src="/vite.svg" alt="Coding" className="w-64 h-64 object-contain drop-shadow-2xl rounded-2xl border-2 border-primary/40 bg-[#23232a]" />
                         </div>
                     </div>
                 </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                    <div className="stat bg-base-100 rounded-2xl shadow-lg border border-base-300">
-                        <div className="stat-figure text-primary">
-                            <Trophy className="w-8 h-8" />
+                    {[{
+                        icon: <Trophy className="w-8 h-8" />,
+                        title: 'Problems Solved',
+                        value: stats.solved,
+                        desc: `out of ${stats.total} problems`,
+                        color: 'text-primary',
+                    }, {
+                        icon: <CheckCircle className="w-8 h-8" />,
+                        title: 'Easy',
+                        value: stats.easy,
+                        desc: 'completed',
+                        color: 'text-success',
+                    }, {
+                        icon: <Clock className="w-8 h-8" />,
+                        title: 'Medium',
+                        value: stats.medium,
+                        desc: 'completed',
+                        color: 'text-warning',
+                    }, {
+                        icon: <TrendingUp className="w-8 h-8" />,
+                        title: 'Hard',
+                        value: stats.hard,
+                        desc: 'completed',
+                        color: 'text-error',
+                    }].map((card) => (
+                        <div
+                            key={card.title}
+                            className={`stat rounded-2xl shadow-xl border flex flex-col items-center justify-center px-6 py-8 ${theme === 'dark' ? 'bg-[rgba(40,40,50,0.92)] border-[#3b3b4d] text-lightgray' : 'bg-base-100 border-base-300'}`}
+                            style={theme === 'dark' ? { backdropFilter: 'blur(8px)' } : {}}
+                        >
+                            <div className={`stat-figure mb-2 ${card.color}`}>{card.icon}</div>
+                            <div className="stat-title text-lg font-semibold mb-1 opacity-80">{card.title}</div>
+                            <div className={`stat-value text-2xl font-bold mb-1 ${card.color}`}>{card.value}</div>
+                            <div className="stat-desc text-sm opacity-70">{card.desc}</div>
                         </div>
-                        <div className="stat-title">Problems Solved</div>
-                        <div className="stat-value text-primary">{stats.solved}</div>
-                        <div className="stat-desc">out of {stats.total} problems</div>
-                    </div>
-                    <div className="stat bg-base-100 rounded-2xl shadow-lg border border-base-300">
-                        <div className="stat-figure text-success">
-                            <CheckCircle className="w-8 h-8" />
-                        </div>
-                        <div className="stat-title">Easy</div>
-                        <div className="stat-value text-success">{stats.easy}</div>
-                        <div className="stat-desc">completed</div>
-                    </div>
-                    <div className="stat bg-base-100 rounded-2xl shadow-lg border border-base-300">
-                        <div className="stat-figure text-warning">
-                            <Clock className="w-8 h-8" />
-                        </div>
-                        <div className="stat-title">Medium</div>
-                        <div className="stat-value text-warning">{stats.medium}</div>
-                        <div className="stat-desc">completed</div>
-                    </div>
-                    <div className="stat bg-base-100 rounded-2xl shadow-lg border border-base-300">
-                        <div className="stat-figure text-error">
-                            <TrendingUp className="w-8 h-8" />
-                        </div>
-                        <div className="stat-title">Hard</div>
-                        <div className="stat-value text-error">{stats.hard}</div>
-                        <div className="stat-desc">completed</div>
-                    </div>
+                    ))}
                 </div>
 
                 {/* Featured Problems */}
-                <div className={`card ${theme === 'dark' ? 'bg-darkgray text-lightgray border-lightgray' : 'bg-base-100'} shadow-lg mb-10 border border-base-300`}>
+                <div className={`card shadow-xl mb-10 border ${theme === 'dark' ? 'bg-[#23232a] text-lightgray border-[#3b3b4d]' : 'bg-base-100 border-base-300'}`} style={theme === 'dark' ? { backdropFilter: 'blur(6px)' } : {}}>
                     <div className="card-body">
-                        <h2 className="card-title text-2xl mb-6">
+                        <h2 className="card-title text-2xl mb-6 flex items-center gap-2">
                             <Star className="w-6 h-6" />
                             Featured Problems
                         </h2>
                         <div className="overflow-x-auto">
-                            <table className="table table-zebra">
+                            <table className={`table table-zebra ${theme === 'dark' ? 'text-lightgray' : ''}`}> 
                                 <thead>
-                                    <tr>
+                                    <tr className={theme === 'dark' ? 'bg-[#23232a] text-lightgray' : ''}>
                                         <th>#</th>
                                         <th>Title</th>
                                         <th>Difficulty</th>
@@ -133,7 +137,7 @@ function Homepage() {
                                 </thead>
                                 <tbody>
                                     {problems.slice(0, 10).map((problem, idx) => (
-                                        <tr key={problem._id}>
+                                        <tr key={problem._id} className={theme === 'dark' ? 'hover:bg-[#23232a]/80' : ''}>
                                             <td>{idx + 1}</td>
                                             <td>{problem.title}</td>
                                             <td>
@@ -155,9 +159,9 @@ function Homepage() {
                 </div>
 
                 {/* Footer */}
-                <footer className="site-footer mt-12 py-8 border-t border-base-300 text-center text-base-content/70">
-                    <div className="container mx-auto">
-                        <span>Copyright © 2025 CodeLab</span>
+                <footer className={`site-footer mt-12 py-8 border-t text-center ${theme === 'dark' ? 'border-[#3b3b4d] text-lightgray/70' : 'border-base-300 text-base-content/70'}`} style={theme === 'dark' ? { backdropFilter: 'blur(2px)' } : {}}>
+                    <div className="container mx-auto flex flex-wrap justify-center items-center gap-2 text-sm">
+                        <span>© 2025 CodeLab</span>
                         <span className="mx-2">|</span>
                         <NavLink to="/support" className="hover:underline">Help Center</NavLink>
                         <span className="mx-2">|</span>
