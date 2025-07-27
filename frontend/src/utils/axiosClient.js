@@ -36,10 +36,13 @@ axiosClient.interceptors.response.use(
         return response;
     },
     (error) => {
-        // Handle common errors
+        // Only redirect to /login for protected API requests
         if (error.response?.status === 401) {
             const currentPath = window.location.pathname;
-            if (currentPath !== "/login" && currentPath !== "/signup") {
+            const url = error.config.url || "";
+            // List of public API endpoints (add more if needed)
+            const isPublicApi = url.includes("/user/check") || url.includes("/problem") || url.includes("/contests") || url.includes("/leaderboard") || url.includes("/discuss") || url.includes("/homepage");
+            if (!isPublicApi && currentPath !== "/login" && currentPath !== "/signup") {
                 window.location.href = "/login";
             }
         }
