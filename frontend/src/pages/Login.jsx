@@ -5,22 +5,48 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, NavLink } from "react-router-dom";
 import { loginUser } from "../authSlice";
 import { useEffect, useState } from "react";
+import { useTheme } from "../utils/ThemeContext.jsx";
+import {
+    Eye,
+    EyeOff,
+    Mail,
+    Lock,
+    ArrowRight,
+    AlertCircle,
+    CheckCircle,
+    Github,
+    Chrome,
+    Loader2,
+    Shield,
+} from "lucide-react";
 
 const loginSchema = z.object({
-    emailId: z.string().email("Invalid Email"),
-    password: z.string().min(8, "Password is too weak"),
+    emailId: z.string().email("Please enter a valid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 function Login() {
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const { theme } = useTheme();
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
+    const { isAuthenticated, loading, error } = useSelector(
+        (state) => state.auth
+    );
+
     const {
         register,
         handleSubmit,
-        formState: { errors },
-    } = useForm({ resolver: zodResolver(loginSchema) });
+        formState: { errors, isSubmitting },
+        watch,
+    } = useForm({
+        resolver: zodResolver(loginSchema),
+        mode: "onBlur",
+    });
+
+    const emailValue = watch("emailId");
+    const passwordValue = watch("password");
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -28,71 +54,301 @@ function Login() {
         }
     }, [isAuthenticated, navigate]);
 
-    const onSubmit = (data) => {
-        dispatch(loginUser(data));
+    useEffect(() => {
+        setIsLoading(loading);
+    }, [loading]);
+
+    const onSubmit = async (data) => {
+        setIsLoading(true);
+        try {
+            await dispatch(loginUser(data));
+        } finally {
+            setIsLoading(false);
+        }
     };
 
+
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-base-200">
-            <div className="card w-96 bg-base-100 shadow-xl">
-                <div className="card-body">
-                    <h2 className="card-title justify-center text-3xl mb-6">CodeLab Pro</h2>
-                    {error && (
-                        <div className="text-error text-center mb-2">{error}</div>
-                    )}
-                    <form onSubmit={handleSubmit(onSubmit)}>
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text">Email</span>
-                            </label>
-                            <input
-                                type="email"
-                                placeholder="john@example.com"
-                                className={`input input-bordered w-full ${errors.emailId ? "input-error" : ""}`}
-                                {...register("emailId")}
-                            />
-                            {errors.emailId && (
-                                <span className="text-error text-sm mt-1">{errors.emailId.message}</span>
-                            )}
-                        </div>
-                        <div className="form-control mt-4">
-                            <label className="label">
-                                <span className="label-text">Password</span>
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    className={`input input-bordered w-full pr-10 ${errors.password ? "input-error" : ""}`}
-                                    {...register("password")}
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute top-1/2 right-3 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    aria-label={showPassword ? "Hide password" : "Show password"}
-                                >
-                                    {showPassword ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                    )}
-                                </button>
+        <div
+            className={`mt-16 flex items-center justify-center p-4 ${
+                theme === "dark"
+                    ? "bg-pure-black text-white"
+                    : ""
+            }`}
+        >
+            {/* Background Pattern */}
+            <div className="absolute inset-0 overflow-hidden">
+                <div
+                    className={`absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20 ${
+                        theme === "dark" ? "bg-blue-500" : "bg-blue-300"
+                    } blur-3xl`}
+                ></div>
+                <div
+                    className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-20 ${
+                        theme === "dark" ? "bg-purple-500" : "bg-purple-300"
+                    } blur-3xl`}
+                ></div>
+            </div>
+
+            <div className="relative w-full max-w-md">
+                {/* Main Card */}
+                <div
+                    className={`backdrop-blur-xl rounded-3xl shadow-2xl border overflow-hidden ${
+                        theme === "dark"
+                            ? "bg-gray-900/80 border-gray-700"
+                            : "bg-white/80 border-white/20"
+                    }`}
+                >
+                    {/* Header */}
+                    <div
+                        className={`px-8 py-6 text-center border-b ${
+                            theme === "dark"
+                                ? "border-gray-700"
+                                : "border-gray-100"
+                        }`}
+                    >
+                        <div className="flex justify-center items-center mb-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-xl font-bold shadow-lg">
+                                CL
                             </div>
-                            {errors.password && (
-                                <span className="text-error text-sm mt-1">{errors.password.message}</span>
-                            )}
                         </div>
-                        <div className="form-control mt-8 flex justify-center">
-                            <button type="submit" className={`btn btn-primary ${loading ? "loading btn-disabled" : ""}`} disabled={loading}>
-                                {loading ? "Logging in..." : "Login"}
+                        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            Welcome Back
+                        </h1>
+                        <p
+                            className={`mt-2 text-sm ${
+                                theme === "dark"
+                                    ? "text-gray-400"
+                                    : "text-gray-600"
+                            }`}
+                        >
+                            Sign in to continue your coding journey
+                        </p>
+                    </div>
+
+                    {/* Form */}
+                    <div className="p-8">
+                        {/* Error Alert */}
+                        {error && (
+                            <div
+                                className={`flex items-center p-4 mb-6 rounded-lg border ${
+                                    theme === "dark"
+                                        ? "bg-red-900/20 border-red-800 text-red-300"
+                                        : "bg-red-50 border-red-200 text-red-700"
+                                }`}
+                            >
+                                <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                                <span className="text-sm">{error}</span>
+                            </div>
+                        )}
+
+                        <form
+                            onSubmit={handleSubmit(onSubmit)}
+                            className="space-y-6"
+                        >
+                            {/* Email Field */}
+                            <div className="space-y-2">
+                                <label
+                                    className={`text-sm font-medium ${
+                                        theme === "dark"
+                                            ? "text-gray-300"
+                                            : "text-gray-700"
+                                    }`}
+                                >
+                                    Email Address
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Mail
+                                            className={`w-5 h-5 ${
+                                                errors.emailId
+                                                    ? "text-red-500"
+                                                    : emailValue
+                                                    ? "text-blue-500"
+                                                    : theme === "dark"
+                                                    ? "text-gray-500"
+                                                    : "text-gray-400"
+                                            }`}
+                                        />
+                                    </div>
+                                    <input
+                                        type="email"
+                                        placeholder="Enter your email"
+                                        className={`w-full pl-12 pr-4 py-3 rounded-xl border-2  ${
+                                            errors.emailId
+                                                ? theme === "dark"
+                                                    ? "border-red-600 bg-red-900/10 text-red-300"
+                                                    : "border-red-300 bg-red-50 text-red-700"
+                                                : emailValue
+                                                ? theme === "dark"
+                                                    ? "border-blue-500 bg-blue-900/10 text-white"
+                                                    : "border-blue-300 bg-blue-50 text-gray-900"
+                                                : theme === "dark"
+                                                ? "border-gray-600 bg-gray-800/50 text-white hover:border-gray-500"
+                                                : "border-gray-300 bg-white text-gray-900 hover:border-gray-400"
+                                        } focus:outline-none focus:ring-4 ${
+                                            errors.emailId
+                                                ? "focus:ring-red-500/20 focus:border-red-500"
+                                                : "focus:ring-blue-500/20 focus:border-blue-500"
+                                        }`}
+                                        {...register("emailId")}
+                                    />
+                                    {emailValue && !errors.emailId && (
+                                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                                            <CheckCircle className="w-5 h-5 text-green-500" />
+                                        </div>
+                                    )}
+                                </div>
+                                {errors.emailId && (
+                                    <p className="text-red-500 text-sm flex items-center">
+                                        <AlertCircle className="w-4 h-4 mr-1" />
+                                        {errors.emailId.message}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Password Field */}
+                            <div className="space-y-2">
+                                <label
+                                    className={`text-sm font-medium ${
+                                        theme === "dark"
+                                            ? "text-gray-300"
+                                            : "text-gray-700"
+                                    }`}
+                                >
+                                    Password
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Lock
+                                            className={`w-5 h-5 ${
+                                                errors.password
+                                                    ? "text-red-500"
+                                                    : passwordValue
+                                                    ? "text-blue-500"
+                                                    : theme === "dark"
+                                                    ? "text-gray-500"
+                                                    : "text-gray-400"
+                                            }`}
+                                        />
+                                    </div>
+                                    <input
+                                        type={
+                                            showPassword ? "text" : "password"
+                                        }
+                                        placeholder="Enter your password"
+                                        className={`w-full pl-12 pr-12 py-3 rounded-xl border-2  ${
+                                            errors.password
+                                                ? theme === "dark"
+                                                    ? "border-red-600 bg-red-900/10 text-red-300"
+                                                    : "border-red-300 bg-red-50 text-red-700"
+                                                : passwordValue
+                                                ? theme === "dark"
+                                                    ? "border-blue-500 bg-blue-900/10 text-white"
+                                                    : "border-blue-300 bg-blue-50 text-gray-900"
+                                                : theme === "dark"
+                                                ? "border-gray-600 bg-gray-800/50 text-white hover:border-gray-500"
+                                                : "border-gray-300 bg-white text-gray-900 hover:border-gray-400"
+                                        } focus:outline-none focus:ring-4 ${
+                                            errors.password
+                                                ? "focus:ring-red-500/20 focus:border-red-500"
+                                                : "focus:ring-blue-500/20 focus:border-blue-500"
+                                        }`}
+                                        {...register("password")}
+                                    />
+                                    <button
+                                        type="button"
+                                        className={`absolute inset-y-0 right-0 pr-4 flex items-center ${
+                                            theme === "dark"
+                                                ? "text-gray-400 hover:text-gray-300"
+                                                : "text-gray-500 hover:text-gray-700"
+                                        } transition-colors`}
+                                        onClick={() =>
+                                            setShowPassword(!showPassword)
+                                        }
+                                        aria-label={
+                                            showPassword
+                                                ? "Hide password"
+                                                : "Show password"
+                                        }
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="w-5 h-5" />
+                                        ) : (
+                                            <Eye className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                </div>
+                                {errors.password && (
+                                    <p className="text-red-500 text-sm flex items-center">
+                                        <AlertCircle className="w-4 h-4 mr-1" />
+                                        {errors.password.message}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Forgot Password */}
+                            <div className="flex justify-end">
+                                <NavLink
+                                    to="/forgot-password"
+                                    className={`text-sm transition-colors ${
+                                        theme === "dark"
+                                            ? "text-blue-400 hover:text-blue-300"
+                                            : "text-blue-600 hover:text-blue-700"
+                                    }`}
+                                >
+                                    Forgot your password?
+                                </NavLink>
+                            </div>
+
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={isLoading || isSubmitting}
+                                className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center ${
+                                    isLoading || isSubmitting
+                                        ? "bg-gray-400 cursor-not-allowed"
+                                        : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                                }`}
+                            >
+                                {isLoading || isSubmitting ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                        Signing in...
+                                    </>
+                                ) : (
+                                    <>
+                                        Sign In
+                                        <ArrowRight className="w-5 h-5 ml-2" />
+                                    </>
+                                )}
                             </button>
+                        </form>
+
+                    
+                        {/* Sign Up Link */}
+                        <div className="mt-8 text-center">
+                            <p
+                                className={`text-sm ${
+                                    theme === "dark"
+                                        ? "text-gray-400"
+                                        : "text-gray-600"
+                                }`}
+                            >
+                                New to CodeLab Pro?{" "}
+                                <NavLink
+                                    to="/signup"
+                                    className={`font-semibold transition-colors ${
+                                        theme === "dark"
+                                            ? "text-blue-400 hover:text-blue-300"
+                                            : "text-blue-600 hover:text-blue-700"
+                                    }`}
+                                >
+                                    Create an account
+                                </NavLink>
+                            </p>
                         </div>
-                    </form>
-                    <div className="text-center mt-6">
-                        <span className="text-sm">
-                            Don't have an account? <NavLink to="/signup" className="link link-primary">Sign Up</NavLink>
-                        </span>
+
                     </div>
                 </div>
             </div>

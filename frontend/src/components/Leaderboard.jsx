@@ -48,7 +48,7 @@ const Leaderboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 transition-colors duration-300">
+    <div className="min-h-screen transition-colors duration-300">
       <div className="container mx-auto max-w-6xl px-4 py-10 md:py-12 lg:py-16">
         <div className="card bg-base-100 rounded-2xl shadow-lg border border-base-300 mb-10">
           <div className="card-body">

@@ -85,7 +85,7 @@ const Problems = () => {
     }
 
     return (
-        <div className={`min-h-screen ${theme === 'dark' ? 'bg-pureblack text-lightgray' : 'bg-base-100'} transition-colors duration-300`}>
+        <div className={`min-h-screen ${theme === 'dark' ? 'bg-pureblack text-lightgray' : ''} transition-colors duration-300`}>
             <div className="container mx-auto max-w-6xl px-4 py-10 md:py-12 lg:py-16">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
@@ -129,14 +129,14 @@ const Problems = () => {
                         <div className="flex flex-col lg:flex-row gap-4">
                             {/* Search */}
                             <div className="form-control flex-1">
-                                <div className="input-group">
-                                    <span className="bg-base-200">
-                                        <Search className="w-5 h-5" />
+                                <div className={`flex items-center rounded-xl overflow-hidden border ${theme === 'dark' ? 'bg-[#23232a] border-[#3b3b4d]' : 'bg-base-200 border-base-300'}`}>
+                                    <span className={`px-3 flex items-center ${theme === 'dark' ? 'bg-[#23232a]' : 'bg-base-200'}`}>
+                                        <Search className={`w-5 h-5 ${theme === 'dark' ? 'text-primary' : 'text-base-content/70'}`} />
                                     </span>
                                     <input
                                         type="text"
                                         placeholder="Search problems..."
-                                        className="input input-bordered flex-1"
+                                        className={`input input-bordered flex-1 border-none focus:ring-0 focus:outline-none bg-transparent text-lg px-2 ${theme === 'dark' ? 'text-lightgray' : 'text-base-content'}`}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />

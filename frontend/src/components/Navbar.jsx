@@ -1,152 +1,613 @@
 import React from "react";
 import { useTheme } from "../utils/ThemeContext.jsx";
-import { NavLink } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import {
+    Menu,
+    ChevronDown,
+    User,
+    LogOut,
+    Settings,
+    HelpCircle,
+    Briefcase,
+    FileText,
+    X,
+    Sun,
+    Moon,
+    Code,
+    Trophy,
+    MessageSquare,
+    Calendar,
+    Shield,
+    Bell,
+    Search,
+} from "lucide-react";
 import { useSelector } from "react-redux";
-
-import { ChevronDown, User, LogOut, Settings, HelpCircle, Briefcase, FileText } from "lucide-react";
 
 const Navbar = () => {
     const { theme, setTheme } = useTheme();
     const { user, isAuthenticated } = useSelector((state) => state.auth);
     const [menuOpen, setMenuOpen] = React.useState(false);
     const [profileOpen, setProfileOpen] = React.useState(false);
+    // const [searchOpen, setSearchOpen] = React.useState(false);
     const profileRef = React.useRef(null);
+    const mobileMenuRef = React.useRef(null);
+    const location = useLocation();
 
-    // Close profile dropdown on outside click
+    // Close dropdowns on outside click
     React.useEffect(() => {
         function handleClick(e) {
             if (profileRef.current && !profileRef.current.contains(e.target)) {
                 setProfileOpen(false);
             }
+            if (
+                mobileMenuRef.current &&
+                !mobileMenuRef.current.contains(e.target)
+            ) {
+                setMenuOpen(false);
+            }
         }
-        if (profileOpen) {
+        if (profileOpen || menuOpen) {
             document.addEventListener("mousedown", handleClick);
         } else {
             document.removeEventListener("mousedown", handleClick);
         }
         return () => document.removeEventListener("mousedown", handleClick);
-    }, [profileOpen]);
+    }, [profileOpen, menuOpen]);
+
+    // Close mobile menu on route change
+    React.useEffect(() => {
+        setMenuOpen(false);
+        setProfileOpen(false);
+    }, [location.pathname]);
+
+    // Prevent body scroll when mobile menu is open
+    React.useEffect(() => {
+        if (menuOpen) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+        }
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [menuOpen]);
+
+    const navItems = [
+        {
+            to: "/problems",
+            label: "Problems",
+            icon: <Code className="w-4 h-4" />,
+        },
+        {
+            to: "/leaderboard",
+            label: "Leaderboard",
+            icon: <Trophy className="w-4 h-4" />,
+        },
+        {
+            to: "/contests",
+            label: "Contests",
+            icon: <Calendar className="w-4 h-4" />,
+        },
+        {
+            to: "/discuss",
+            label: "Discuss",
+            icon: <MessageSquare className="w-4 h-4" />,
+        },
+    ];
+
+    const isActivePath = (path) => {
+        return (
+            location.pathname === path ||
+            location.pathname.startsWith(path + "/")
+        );
+    };
 
     return (
-        <nav
-            className={`navbar sticky top-0 z-50 shadow-lg flex items-center justify-between ${
-                theme === "dark"
-                    ? "bg-gradient-to-br from-[#18181c]/80 via-[#23232a]/80 to-[#18181c]/80 backdrop-blur-xl border-b border-gray-800 text-white"
-                    : "bg-white/80 backdrop-blur-xl border-b border-base-300 text-gray-900"
-            }`}
-        >
-            <div className="container mx-auto px-2 flex items-center justify-between w-full">
-                {/* Left: Brand & Mobile Menu */}
-                <div className="flex items-center gap-2">
-                    <NavLink to="/" className="btn btn-ghost text-xl font-extrabold tracking-tight">
-                        <span className="text-primary">CodeLab</span> <span className="text-accent">Pro</span>
-                    </NavLink>
-                    {/* Mobile menu button */}
-                    <button className="lg:hidden btn btn-ghost btn-square" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu">
-                        <Menu className="w-6 h-6" />
-                    </button>
-                </div>
-                {/* Center: Desktop Menu */}
-                <div className="hidden lg:flex flex-1 justify-center">
-                    <ul className="menu menu-horizontal px-1 gap-2">
-                        <li><NavLink to="/problems" className="btn btn-ghost rounded-lg font-semibold">Problems</NavLink></li>
-                        <li><NavLink to="/leaderboard" className="btn btn-ghost rounded-lg font-semibold">Leaderboard</NavLink></li>
-                        <li><NavLink to="/contests" className="btn btn-ghost rounded-lg font-semibold">Contests</NavLink></li>
-                        <li><NavLink to="/discuss" className="btn btn-ghost rounded-lg font-semibold">Discuss</NavLink></li>
-                        {isAuthenticated && user?.role === "admin" && (
-                            <li><NavLink to="/admin" className="btn btn-ghost rounded-lg font-semibold text-warning">Admin</NavLink></li>
-                        )}
-                    </ul>
-                </div>
-                {/* Right: Theme Switcher & Profile */}
-                <div className="flex items-center gap-2 relative">
-                    <button
-                        className={`btn btn-outline btn-sm flex items-center gap-2 rounded-full border px-3 py-1 shadow ${
-                            theme === "dark"
-                                ? "bg-[#23232a]/80 text-white border-gray-700 hover:bg-[#23232a]/90"
-                                : "bg-white/80 text-gray-900 border-base-300 hover:bg-base-200"
-                        }`}
-                        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                        aria-label="Toggle theme"
-                        style={{ minWidth: 48 }}
-                    >
-                        <span className="flex items-center gap-1">
-                            {theme === "dark" ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" /></svg>
+        <>
+            <nav
+                className={`navbar sticky top-0 z-50 ${
+                    theme === "dark"
+                        ? "bg-pureblack backdrop-blur-xl text-white shadow-lg shadow-gray-900/20"
+                        : "bg-white/95 backdrop-blur-xl text-gray-900 shadow-lg shadow-gray-200/20"
+                }`}
+            >
+                <div className="container mx-auto px-4 flex items-center justify-between w-full h-16">
+                    {/* Left: Brand & Mobile Menu */}
+                    <div className="flex items-center gap-4">
+                        <NavLink
+                            to="/"
+                            className="flex items-center gap-2 font-extrabold text-xl tracking-tight hover:scale-105 transition-transform duration-200"
+                        >
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-lg">
+                                CL
+                            </div>
+                            <span className="hidden sm:block">
+                                <span className="text-blue-600">CodeLab</span>
+                                <span className="text-purple-600">Pro</span>
+                            </span>
+                        </NavLink>
+
+                        {/* Mobile menu button */}
+                        <button
+                            className={`lg:hidden p-2 rounded-xl transition-all duration-200 ${
+                                theme === "dark"
+                                    ? "hover:bg-gray-800 active:bg-gray-700"
+                                    : "hover:bg-gray-100 active:bg-gray-200"
+                            }`}
+                            onClick={() => setMenuOpen(!menuOpen)}
+                            aria-label={menuOpen ? "Close menu" : "Open menu"}
+                        >
+                            {menuOpen ? (
+                                <X className="w-6 h-6" />
                             ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="5" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.95 6.95l-1.41-1.41M6.46 6.46L5.05 5.05m12.02 12.02l-1.41-1.41M6.46 17.54l-1.41 1.41" /></svg>
+                                <Menu className="w-6 h-6" />
                             )}
-                        <span className="text-xs font-bold">{theme === "dark" ? "Dark" : "Light"}</span>
-                        </span>
-                    </button>
-                    
-                    {/* Auth buttons or Profile dropdown */}
-                    {isAuthenticated ? (
-                        <div className="relative" ref={profileRef}>
-                            <button
-                                className="btn btn-primary btn-sm rounded-full font-semibold shadow-md flex items-center gap-2"
-                                onClick={() => setProfileOpen((open) => !open)}
-                                aria-label="Open profile menu"
-                            >
-                                <User className="w-5 h-5" />
-                                {user?.firstName || "Profile"}
-                                <ChevronDown className="w-4 h-4" />
-                            </button>
-                            {profileOpen && (
-                                <div
-                                    className={`absolute right-0 mt-2 w-56 border rounded-xl shadow-2xl z-50 ${
-                                        theme === "dark"
-                                            ? "bg-gradient-to-br from-[#18181c]/95 via-[#23232a]/95 to-[#18181c]/95 text-white border-gray-700"
-                                            : "bg-white/95 text-gray-900 border-base-300"
+                        </button>
+                    </div>
+
+                    {/* Center: Desktop Navigation */}
+                    <div className="hidden lg:flex flex-1 justify-center">
+                        <div
+                            className={`flex items-center space-x-1 p-1 rounded-2xl ${
+                                theme === "dark"
+                                    ? "bg-gray-800/50"
+                                    : "bg-gray-100/80"
+                            }`}
+                        >
+                            {navItems.map((item) => (
+                                <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
+                                        isActivePath(item.to)
+                                            ? theme === "dark"
+                                                ? "bg-blue-600 text-white shadow-lg"
+                                                : "bg-white text-blue-600 shadow-md"
+                                            : theme === "dark"
+                                            ? "text-gray-300 hover:text-white hover:bg-gray-700"
+                                            : "text-gray-600 hover:text-gray-900 hover:bg-white/60"
                                     }`}
                                 >
-                                    <ul className="py-2">
-                                        <li><NavLink to="/profile" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><User className="w-4 h-4" /> My Profile</NavLink></li>
-                                        <li><NavLink to="/settings" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><Settings className="w-4 h-4" /> Settings</NavLink></li>
-                                        {user?.role === "admin" && (
-                                            <li><NavLink to="/admin" className={`flex items-center gap-2 px-4 py-3 rounded-lg text-warning ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><Briefcase className="w-4 h-4" /> Admin Panel</NavLink></li>
-                                        )}
-                                        <li><NavLink to="/logout" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-error/80 hover:text-white" : "hover:bg-error/10 hover:text-error"}`} onClick={() => setProfileOpen(false)} replace><LogOut className="w-4 h-4" /> Logout</NavLink></li>
-                                    </ul>
-                                </div>
+                                    {item.icon}
+                                    <span className="hidden xl:block">
+                                        {item.label}
+                                    </span>
+                                </NavLink>
+                            ))}
+                            {isAuthenticated && user?.role === "admin" && (
+                                <NavLink
+                                    to="/admin"
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
+                                        isActivePath("/admin")
+                                            ? "bg-orange-500 text-white shadow-lg"
+                                            : theme === "dark"
+                                            ? "text-orange-400 hover:text-orange-300 hover:bg-gray-700"
+                                            : "text-orange-600 hover:text-orange-700 hover:bg-white/60"
+                                    }`}
+                                >
+                                    <Shield className="w-4 h-4" />
+                                    <span className="hidden xl:block">
+                                        Admin
+                                    </span>
+                                </NavLink>
                             )}
                         </div>
+                    </div>
+
+                    {/* Right: Search, Theme Switcher & Profile */}
+                    <div className="flex items-center gap-3">
+                        {/* Search Button */}
+                        {/* <button
+                            className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                theme === "dark"
+                                    ? "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700"
+                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                            }`}
+                            onClick={() => setSearchOpen(true)}
+                        >
+                            <Search className="w-4 h-4" />
+                            <span className="hidden lg:block">Search...</span>
+                            <kbd
+                                className={`px-1.5 py-0.5 text-xs rounded ${
+                                    theme === "dark"
+                                        ? "bg-gray-700 text-gray-400"
+                                        : "bg-gray-200 text-gray-500"
+                                }`}
+                            >
+                                ⌘K
+                            </kbd>
+                        </button> */}
+
+                        {/* Theme Toggle */}
+                        <button
+                            className={`p-2.5 rounded-xl transition-all duration-200 ${
+                                theme === "dark"
+                                    ? "bg-gray-800 text-yellow-400 hover:bg-gray-700 hover:text-yellow-300"
+                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800"
+                            }`}
+                            onClick={() =>
+                                setTheme(theme === "light" ? "dark" : "light")
+                            }
+                            aria-label="Toggle theme"
+                        >
+                            {theme === "dark" ? (
+                                <Sun className="w-5 h-5" />
+                            ) : (
+                                <Moon className="w-5 h-5" />
+                            )}
+                        </button>
+
+                        {/* Notifications (for authenticated users) */}
+                        {isAuthenticated && (
+                            <button
+                                className={`p-2.5 rounded-xl transition-all duration-200 relative ${
+                                    theme === "dark"
+                                        ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                }`}
+                                aria-label="Notifications"
+                            >
+                                <Bell className="w-5 h-5" />
+                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                            </button>
+                        )}
+
+                        {/* Auth Section */}
+                        {isAuthenticated ? (
+                            <div className="relative" ref={profileRef}>
+                                <button
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl font-medium transition-all duration-200 ${
+                                        theme === "dark"
+                                            ? "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/25"
+                                            : "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/25"
+                                    }`}
+                                    onClick={() => setProfileOpen(!profileOpen)}
+                                    aria-label="Open profile menu"
+                                >
+                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                        {user?.firstName?.charAt(0) ||
+                                            user?.email?.charAt(0) ||
+                                            "U"}
+                                    </div>
+                                    <span className="hidden sm:block max-w-20 truncate">
+                                        {user?.firstName || "Profile"}
+                                    </span>
+                                    <ChevronDown
+                                        className={`w-4 h-4 transition-transform duration-200 ${
+                                            profileOpen ? "rotate-180" : ""
+                                        }`}
+                                    />
+                                </button>
+
+                                {/* Profile Dropdown */}
+                                {profileOpen && (
+                                    <div
+                                        className={`absolute right-0 mt-3 w-64 rounded-2xl shadow-2xl border backdrop-blur-xl z-50 transform transition-all duration-200 ${
+                                            theme === "dark"
+                                                ? "bg-gray-900/95 border-gray-700 text-white"
+                                                : "bg-white/95 border-gray-200 text-gray-900"
+                                        }`}
+                                    >
+                                        {/* Profile Header */}
+                                        <div
+                                            className={`p-4 border-b ${
+                                                theme === "dark"
+                                                    ? "border-gray-700"
+                                                    : "border-gray-200"
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                                                    {user?.firstName?.charAt(
+                                                        0
+                                                    ) ||
+                                                        user?.email?.charAt(
+                                                            0
+                                                        ) ||
+                                                        "U"}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold truncate">
+                                                        {user?.firstName}{" "}
+                                                        {user?.lastName}
+                                                    </p>
+                                                    <p
+                                                        className={`text-sm truncate ${
+                                                            theme === "dark"
+                                                                ? "text-gray-400"
+                                                                : "text-gray-600"
+                                                        }`}
+                                                    >
+                                                        {user?.email}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Menu Items */}
+                                        <div className="py-2">
+                                            <NavLink
+                                                to="/profile"
+                                                className={`flex items-center gap-3 px-4 py-3 transition-colors duration-200 ${
+                                                    theme === "dark"
+                                                        ? "hover:bg-gray-800"
+                                                        : "hover:bg-gray-100"
+                                                }`}
+                                                onClick={() =>
+                                                    setProfileOpen(false)
+                                                }
+                                            >
+                                                <User className="w-5 h-5" />
+                                                <span>My Profile</span>
+                                            </NavLink>
+                                            <NavLink
+                                                to="/settings"
+                                                className={`flex items-center gap-3 px-4 py-3 transition-colors duration-200 ${
+                                                    theme === "dark"
+                                                        ? "hover:bg-gray-800"
+                                                        : "hover:bg-gray-100"
+                                                }`}
+                                                onClick={() =>
+                                                    setProfileOpen(false)
+                                                }
+                                            >
+                                                <Settings className="w-5 h-5" />
+                                                <span>Settings</span>
+                                            </NavLink>
+                                            <NavLink
+                                                to="/help"
+                                                className={`flex items-center gap-3 px-4 py-3 transition-colors duration-200 ${
+                                                    theme === "dark"
+                                                        ? "hover:bg-gray-800"
+                                                        : "hover:bg-gray-100"
+                                                }`}
+                                                onClick={() =>
+                                                    setProfileOpen(false)
+                                                }
+                                            >
+                                                <HelpCircle className="w-5 h-5" />
+                                                <span>Help & Support</span>
+                                            </NavLink>
+                                            {user?.role === "admin" && (
+                                                <NavLink
+                                                    to="/admin"
+                                                    className={`flex items-center gap-3 px-4 py-3 text-orange-500 transition-colors duration-200 ${
+                                                        theme === "dark"
+                                                            ? "hover:bg-gray-800"
+                                                            : "hover:bg-gray-100"
+                                                    }`}
+                                                    onClick={() =>
+                                                        setProfileOpen(false)
+                                                    }
+                                                >
+                                                    <Shield className="w-5 h-5" />
+                                                    <span>Admin Panel</span>
+                                                </NavLink>
+                                            )}
+                                            <hr
+                                                className={`my-2 ${
+                                                    theme === "dark"
+                                                        ? "border-gray-700"
+                                                        : "border-gray-200"
+                                                }`}
+                                            />
+                                            <NavLink
+                                                to="/logout"
+                                                className={`flex items-center gap-3 px-4 py-3 text-red-500 transition-colors duration-200 ${
+                                                    theme === "dark"
+                                                        ? "hover:bg-gray-800"
+                                                        : "hover:bg-gray-100"
+                                                }`}
+                                                onClick={() =>
+                                                    setProfileOpen(false)
+                                                }
+                                                replace
+                                            >
+                                                <LogOut className="w-5 h-5" />
+                                                <span>Sign Out</span>
+                                            </NavLink>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <NavLink
+                                    to="/login"
+                                    className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
+                                        theme === "dark"
+                                            ? "text-gray-300 hover:text-white hover:bg-gray-800"
+                                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                    }`}
+                                >
+                                    Sign In
+                                </NavLink>
+                                <NavLink
+                                    to="/signup"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all duration-200 shadow-lg shadow-blue-600/25"
+                                >
+                                    Get Started
+                                </NavLink>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </nav>
+
+            {/* Mobile Menu Overlay */}
+            {menuOpen && (
+                <div
+                    className="lg:hidden fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+                    onClick={() => setMenuOpen(false)}
+                />
+            )}
+
+            {/* Mobile Menu */}
+            <div
+                ref={mobileMenuRef}
+                className={`lg:hidden fixed top-16 left-0 right-0 z-50 transform transition-all duration-300 ${
+                    menuOpen
+                        ? "translate-y-0 opacity-100"
+                        : "-translate-y-full opacity-0"
+                } ${
+                    theme === "dark"
+                        ? "bg-gray-900/95 backdrop-blur-xl border-b border-gray-800"
+                        : "bg-white/95 backdrop-blur-xl border-b border-gray-200"
+                }`}
+            >
+                <div className="container mx-auto px-4 py-6">
+                    {/* Search Bar (Mobile) */}
+                    <div
+                        className={`mb-6 p-3 rounded-xl border ${
+                            theme === "dark"
+                                ? "bg-gray-800 border-gray-700"
+                                : "bg-gray-100 border-gray-200"
+                        }`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <Search className="w-5 h-5 text-gray-500" />
+                            <input
+                                type="text"
+                                placeholder="Search problems..."
+                                className="flex-1 bg-transparent outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Navigation Links */}
+                    <div className="space-y-2 mb-6">
+                        {navItems.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                className={`flex items-center gap-4 p-4 rounded-xl font-medium transition-all duration-200 ${
+                                    isActivePath(item.to)
+                                        ? theme === "dark"
+                                            ? "bg-blue-600 text-white"
+                                            : "bg-blue-600 text-white"
+                                        : theme === "dark"
+                                        ? "text-gray-300 hover:text-white hover:bg-gray-800"
+                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                }`}
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                {item.icon}
+                                <span>{item.label}</span>
+                            </NavLink>
+                        ))}
+                        {isAuthenticated && user?.role === "admin" && (
+                            <NavLink
+                                to="/admin"
+                                className={`flex items-center gap-4 p-4 rounded-xl font-medium transition-all duration-200 ${
+                                    isActivePath("/admin")
+                                        ? "bg-orange-500 text-white"
+                                        : theme === "dark"
+                                        ? "text-orange-400 hover:text-orange-300 hover:bg-gray-800"
+                                        : "text-orange-600 hover:text-orange-700 hover:bg-gray-100"
+                                }`}
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                <Shield className="w-5 h-5" />
+                                <span>Admin Panel</span>
+                            </NavLink>
+                        )}
+                    </div>
+
+                    {/* Auth Section (Mobile) */}
+                    {isAuthenticated ? (
+                        <div className="space-y-2">
+                            <div
+                                className={`p-4 rounded-xl border ${
+                                    theme === "dark"
+                                        ? "bg-gray-800 border-gray-700"
+                                        : "bg-gray-100 border-gray-200"
+                                }`}
+                            >
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                                        {user?.firstName?.charAt(0) ||
+                                            user?.email?.charAt(0) ||
+                                            "U"}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold truncate">
+                                            {user?.firstName} {user?.lastName}
+                                        </p>
+                                        <p
+                                            className={`text-sm truncate ${
+                                                theme === "dark"
+                                                    ? "text-gray-400"
+                                                    : "text-gray-600"
+                                            }`}
+                                        >
+                                            {user?.email}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <NavLink
+                                to="/profile"
+                                className={`flex items-center gap-4 p-4 rounded-xl font-medium transition-all duration-200 ${
+                                    theme === "dark"
+                                        ? "text-gray-300 hover:text-white hover:bg-gray-800"
+                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                }`}
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                <User className="w-5 h-5" />
+                                <span>My Profile</span>
+                            </NavLink>
+                            <NavLink
+                                to="/settings"
+                                className={`flex items-center gap-4 p-4 rounded-xl font-medium transition-all duration-200 ${
+                                    theme === "dark"
+                                        ? "text-gray-300 hover:text-white hover:bg-gray-800"
+                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                }`}
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                <Settings className="w-5 h-5" />
+                                <span>Settings</span>
+                            </NavLink>
+                            <NavLink
+                                to="/logout"
+                                className={`flex items-center gap-4 p-4 rounded-xl font-medium text-red-500 transition-all duration-200 ${
+                                    theme === "dark"
+                                        ? "hover:bg-gray-800"
+                                        : "hover:bg-gray-100"
+                                }`}
+                                onClick={() => setMenuOpen(false)}
+                                replace
+                            >
+                                <LogOut className="w-5 h-5" />
+                                <span>Sign Out</span>
+                            </NavLink>
+                        </div>
                     ) : (
-                        <div className="flex items-center gap-2">
-                            <NavLink to="/login" className="btn btn-ghost btn-sm">Login</NavLink>
-                            <NavLink to="/signup" className="btn btn-primary btn-sm">Sign Up</NavLink>
+                        <div className="space-y-3">
+                            <NavLink
+                                to="/login"
+                                className={`block w-full p-4 text-center rounded-xl font-medium transition-all duration-200 ${
+                                    theme === "dark"
+                                        ? "text-gray-300 hover:text-white hover:bg-gray-800 border border-gray-700"
+                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 border border-gray-200"
+                                }`}
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                Sign In
+                            </NavLink>
+                            <NavLink
+                                to="/signup"
+                                className="block w-full p-4 text-center bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all duration-200"
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                Get Started Free
+                            </NavLink>
                         </div>
                     )}
                 </div>
             </div>
-            {/* Mobile Menu Dropdown */}
-            {menuOpen && (
-                <div className={`lg:hidden absolute top-full left-0 w-full bg-base-100 ${theme === "dark" ? "bg-pureblack text-lightgray" : "bg-base-100"} shadow-xl border-t border-base-300 animate-fade-in`}>
-                    <ul className="flex flex-col gap-2 p-4">
-                        <li><NavLink to="/problems" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Problems</NavLink></li>
-                        <li><NavLink to="/leaderboard" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Leaderboard</NavLink></li>
-                        <li><NavLink to="/contests" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Contests</NavLink></li>
-                        <li><NavLink to="/discuss" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Discuss</NavLink></li>
-                        {isAuthenticated && user?.role === "admin" && (
-                            <li><NavLink to="/admin" className="btn btn-ghost w-full text-left text-warning" onClick={() => setMenuOpen(false)}>Admin Panel</NavLink></li>
-                        )}
-                        {!isAuthenticated && (
-                            <>
-                                <li><NavLink to="/login" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
-                                <li><NavLink to="/signup" className="btn btn-primary w-full text-left" onClick={() => setMenuOpen(false)}>Sign Up</NavLink></li>
-                            </>
-                        )}
-                        {isAuthenticated && (
-                            <>
-                                <li><NavLink to="/profile" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>My Profile</NavLink></li>
-                                <li><NavLink to="/logout" className="btn btn-error w-full text-left" onClick={() => setMenuOpen(false)}>Logout</NavLink></li>
-                            </>
-                        )}
-                    </ul>
-                </div>
-            )}
-        </nav>
+        </>
     );
 };
 
