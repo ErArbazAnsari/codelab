@@ -9,19 +9,14 @@ import ChatAi from "../components/ChatAi";
 import Editorial from "../components/Editorial";
 import {
     Play,
-    Square,
     Maximize2,
     Minimize2,
     Settings,
     Clock,
-    MemoryStick,
-    CheckCircle,
     XCircle,
     FileText,
-    MessageSquare,
     BookOpen,
     Brain,
-    ChevronDown,
     Copy,
     RotateCcw,
 } from "lucide-react";
@@ -51,22 +46,12 @@ const ProblemPage = () => {
     const resizeRef = useRef(null);
     const { problemId } = useParams();
 
-    const { handleSubmit } = useForm();
-
     useEffect(() => {
         const fetchProblem = async () => {
             setLoading(true);
             try {
-                const response = await axiosClient.get(
-                    `/problem/problemById/${problemId}`
-                );
-                const initialCode =
-                    response.data.startCode?.find(
-                        (sc) => sc.language === langMap[selectedLanguage]
-                    )?.initialCode || "";
-
+                const response = await axiosClient.get(`/problem/problemById/${problemId}`);
                 setProblem(response.data);
-                setCode(initialCode);
             } catch (error) {
                 console.error("Error fetching problem:", error);
             } finally {
