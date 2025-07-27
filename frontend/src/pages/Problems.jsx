@@ -27,26 +27,38 @@ const Problems = () => {
         status: "all",
     });
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const [problemsRes, solvedRes] = await Promise.all([
-                    axiosClient.get("/problem/getAllProblem"),
-                    user
-                        ? axiosClient.get("/problem/problemSolvedByUser")
-                        : Promise.resolve({ data: [] }),
-                ]);
-                setProblems(problemsRes.data);
-                setSolvedProblems(solvedRes.data);
-            } catch (error) {
-                window.alert("Failed to fetch data");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, [user]);
+useEffect(() => {
+    const fetchProblems = async () => {
+        try {
+            setLoading(true);
+            const problemsRes = await axiosClient.get("/problem/getAllProblem");
+            setProblems(problemsRes.data);
+        } catch (error) {
+            window.alert("Failed to fetch problems");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchSolvedProblems = async () => {
+        try {
+            setLoading(true);
+            const solvedRes = await axiosClient.get("/problem/problemSolvedByUser");
+            setSolvedProblems(solvedRes.data);
+        } catch (error) {
+            window.alert("Failed to fetch solved problems");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchProblems();
+    if (user) {
+        fetchSolvedProblems();
+    } else {
+        setSolvedProblems([]);
+    }
+}, [user]);
 
 
     const stats = {
