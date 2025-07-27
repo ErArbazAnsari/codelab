@@ -23,8 +23,7 @@ app.use(cors({
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
-    exposedHeaders: ["Set-Cookie"],
-    preflightContinue: false
+    exposedHeaders: ["Set-Cookie"]
 }));
 // Health check endpoint
 app.get("/health", (req, res) => {
