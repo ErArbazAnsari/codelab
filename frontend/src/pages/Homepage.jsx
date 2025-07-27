@@ -107,42 +107,42 @@ function Homepage() {
     const companies = [
         {
             name: "Google",
-            logo: "../assets/company/google.png",
+            logo: "/public/google.png",
             color: "hover:text-blue-500",
         },
         {
             name: "Amazon",
-            logo: "../assets/company/amazon.png",
+            logo: "/public/amazon.png",
             color: "hover:text-orange-500",
         },
         {
             name: "Microsoft",
-            logo: "../assets/company/microsoft.png",
+            logo: "/public/microsoft.png",
             color: "hover:text-blue-600",
         },
         {
             name: "Meta",
-            logo: "../assets/company/meta.png",
+            logo: "/public/meta.png",
             color: "hover:text-blue-500",
         },
         {
             name: "Netflix",
-            logo: "../assets/company/netflix.png",
+            logo: "/public/netflix.png",
             color: "hover:text-red-500",
         },
         {
             name: "Apple",
-            logo: "../assets/company/apple.png",
+            logo: "/public/apple.png",
             color: "hover:text-gray-600",
         },
         {
             name: "Tesla",
-            logo: "../assets/company/tesla.png",
+            logo: "/public/tesla.png",
             color: "hover:text-red-500",
         },
         {
             name: "Uber",
-            logo: "../assets/company/uber.png",
+            logo: "/public/uber.png",
             color: "hover:text-gray-800",
         },
     ];
