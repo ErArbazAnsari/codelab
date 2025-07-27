@@ -85,7 +85,6 @@ const ProblemPage = () => {
       });
 
       setRunResult(response.data);
-      setLoading(false);
       setActiveRightTab('testcase');
       
     } catch (error) {
@@ -94,8 +93,9 @@ const ProblemPage = () => {
         success: false,
         error: 'Internal server error'
       });
-      setLoading(false);
       setActiveRightTab('testcase');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,14 +110,14 @@ const ProblemPage = () => {
       });
 
        setSubmitResult(response.data);
-       setLoading(false);
        setActiveRightTab('result');
       
     } catch (error) {
       console.error('Error submitting code:', error);
       setSubmitResult(null);
-      setLoading(false);
       setActiveRightTab('result');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -229,9 +229,7 @@ const ProblemPage = () => {
               {activeLeftTab === 'editorial' && (
                 <div className="prose max-w-none">
                   <h2 className="text-xl font-bold mb-4">Editorial</h2>
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    <Editorial secureUrl={problem.secureUrl} thumbnailUrl={problem.thumbnailUrl} duration={problem.duration}/>
-                  </div>
+                  <Editorial secureUrl={problem.secureUrl} thumbnailUrl={problem.thumbnailUrl} duration={problem.duration}/>
                 </div>
               )}
 
@@ -257,19 +255,14 @@ const ProblemPage = () => {
 
               {activeLeftTab === 'submissions' && (
                 <div>
-                  <h2 className="text-xl font-bold mb-4">My Submissions</h2>
-                  <div className="text-gray-500">
-                    <SubmissionHistory problemId={problemId} />
-                  </div>
+                  <SubmissionHistory problemId={problemId} />
                 </div>
               )}
 
               {activeLeftTab === 'chatAI' && (
                 <div className="prose max-w-none">
                   <h2 className="text-xl font-bold mb-4">CHAT with AI</h2>
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    <ChatAi problem={problem}></ChatAi>
-                  </div>
+                  <ChatAi problem={problem}></ChatAi>
                 </div>
               )}
             </>

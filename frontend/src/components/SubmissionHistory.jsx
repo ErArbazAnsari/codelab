@@ -25,11 +25,16 @@ const SubmissionHistory = ({ problemId }) => {
     fetchSubmissions();
   }, [problemId]);
 
-  const getStatusColor = (status) => {
+      if (typeof response.data === 'string' && response.data.includes('No Submission')) {
+        setSubmissions([]);
+      } else {
+        setSubmissions(Array.isArray(response.data) ? response.data : []);
+      }
     switch (status) {
       case 'accepted': return 'badge-success';
       case 'wrong': return 'badge-error';
       case 'error': return 'badge-warning';
+      setSubmissions([]);
       case 'pending': return 'badge-info';
       default: return 'badge-neutral';
     }

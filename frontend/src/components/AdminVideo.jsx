@@ -83,13 +83,13 @@ const AdminVideo = () => {
                 <td>{problem.title}</td>
                 <td>
                   <span className={`badge ${
-                    problem.difficulty === 'Easy' 
+                    problem.difficulty === 'easy' 
                       ? 'badge-success' 
-                      : problem.difficulty === 'Medium' 
+                      : problem.difficulty === 'medium' 
                         ? 'badge-warning' 
                         : 'badge-error'
                   }`}>
-                    {problem.difficulty}
+                    {problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1)}
                   </span>
                 </td>
                 <td>

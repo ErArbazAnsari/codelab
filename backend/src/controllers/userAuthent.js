@@ -33,6 +33,7 @@ const register = async (req,res)=>{
         };
         res.cookie('token', token, { maxAge: 60 * 60 * 1000 });
         res.status(201).json({
+            success: true,
             user: reply,
             message: "Loggin Successfully"
         });
@@ -58,6 +59,9 @@ const login = async (req,res)=>{
             throw new Error("Invalid Credentials");
 
         const user = await User.findOne({emailId});
+        
+        if(!user)
+            throw new Error("Invalid Credentials");
 
         const match = await bcrypt.compare(password,user.password);
 
@@ -74,12 +78,18 @@ const login = async (req,res)=>{
         const token =  jwt.sign({_id:user._id , emailId:emailId, role:user.role},process.env.JWT_KEY,{expiresIn: 60*60});
         res.cookie('token',token,{maxAge: 60*60*1000});
         res.status(201).json({
+            success: true,
             user:reply,
             message:"Loggin Successfully"
         })
     }
     catch(err){
-        res.status(401).send("Error: "+err);
+        res.status(401).json({
+            success: false,
+            error: {
+                message: err.message || "Authentication failed"
+            }
+        });
     }
 }
 

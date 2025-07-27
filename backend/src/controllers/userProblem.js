@@ -221,11 +221,18 @@ const submittedProblem = async (req, res) => {
 
         const ans = await Submission.find({ userId, problemId });
 
-        if (ans.length == 0) res.status(200).send("No Submission is persent");
+        if (ans.length == 0) {
+            return res.status(200).json([]);
+        }
 
-        res.status(200).send(ans);
+        res.status(200).json(ans);
     } catch (err) {
-        res.status(500).send("Internal Server Error");
+        res.status(500).json({
+            success: false,
+            error: {
+                message: "Internal Server Error"
+            }
+        });
     }
 };
 

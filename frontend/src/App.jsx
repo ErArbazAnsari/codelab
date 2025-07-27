@@ -27,12 +27,15 @@ function App() {
     const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector((state) => state.auth);
 
+    useEffect(() => {
+        dispatch(checkAuth());
+    }, [dispatch]);
+
     return (
         <ThemeProvider>
             <ThemeConsumerApp isAuthenticated={isAuthenticated} user={user} />
         </ThemeProvider>
     );
-
 }
 
 function ThemeConsumerApp({ isAuthenticated, user }) {

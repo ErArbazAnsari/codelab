@@ -36,7 +36,7 @@ function Login() {
         <div className="min-h-screen flex items-center justify-center p-4 bg-base-200">
             <div className="card w-96 bg-base-100 shadow-xl">
                 <div className="card-body">
-                    <h2 className="card-title justify-center text-3xl mb-6">Login</h2>
+                    <h2 className="card-title justify-center text-3xl mb-6">CodeLab Pro</h2>
                     {error && (
                         <div className="text-error text-center mb-2">{error}</div>
                     )}

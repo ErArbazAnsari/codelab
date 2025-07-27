@@ -1,15 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { Pause, Play } from 'lucide-react';
 
-
-
 const Editorial = ({ secureUrl, thumbnailUrl, duration }) => {
-
-
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
+
+  // If no video is available, show a message
+  if (!secureUrl) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-6xl mb-4">📹</div>
+        <h3 className="text-lg font-medium mb-2">No Video Available</h3>
+        <p className="text-base-content/70">Video solution for this problem is not available yet.</p>
+      </div>
+    );
+  }
 
   // Format seconds to MM:SS
   const formatTime = (seconds) => {
@@ -102,6 +109,5 @@ const Editorial = ({ secureUrl, thumbnailUrl, duration }) => {
     </div>
   );
 };
-
 
 export default Editorial;

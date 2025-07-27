@@ -8,7 +8,7 @@ import { ChevronDown, User, LogOut, Settings, HelpCircle, Briefcase, FileText } 
 
 const Navbar = () => {
     const { theme, setTheme } = useTheme();
-    const user = useSelector((state) => state.user);
+    const { user, isAuthenticated } = useSelector((state) => state.auth);
     const [menuOpen, setMenuOpen] = React.useState(false);
     const [profileOpen, setProfileOpen] = React.useState(false);
     const profileRef = React.useRef(null);
@@ -54,6 +54,9 @@ const Navbar = () => {
                         <li><NavLink to="/leaderboard" className="btn btn-ghost rounded-lg font-semibold">Leaderboard</NavLink></li>
                         <li><NavLink to="/contests" className="btn btn-ghost rounded-lg font-semibold">Contests</NavLink></li>
                         <li><NavLink to="/discuss" className="btn btn-ghost rounded-lg font-semibold">Discuss</NavLink></li>
+                        {isAuthenticated && user?.role === "admin" && (
+                            <li><NavLink to="/admin" className="btn btn-ghost rounded-lg font-semibold text-warning">Admin</NavLink></li>
+                        )}
                     </ul>
                 </div>
                 {/* Right: Theme Switcher & Profile */}
@@ -77,37 +80,44 @@ const Navbar = () => {
                         <span className="text-xs font-bold">{theme === "dark" ? "Dark" : "Light"}</span>
                         </span>
                     </button>
-                    {/* Profile button with dropdown */}
-                    <div className="relative" ref={profileRef}>
-                        <button
-                            className="btn btn-primary btn-sm rounded-full font-semibold shadow-md flex items-center gap-2"
-                            onClick={() => setProfileOpen((open) => !open)}
-                            aria-label="Open profile menu"
-                        >
-                            <User className="w-5 h-5" />
-                            {user && user.username ? user.username : "Profile"}
-                            <ChevronDown className="w-4 h-4" />
-                        </button>
-                        {profileOpen && (
-                            <div
-                                className={`absolute right-0 mt-2 w-56 border rounded-xl shadow-2xl z-50 ${
-                                    theme === "dark"
-                                        ? "bg-gradient-to-br from-[#18181c]/95 via-[#23232a]/95 to-[#18181c]/95 text-white border-gray-700"
-                                        : "bg-white/95 text-gray-900 border-base-300"
-                                }`}
+                    
+                    {/* Auth buttons or Profile dropdown */}
+                    {isAuthenticated ? (
+                        <div className="relative" ref={profileRef}>
+                            <button
+                                className="btn btn-primary btn-sm rounded-full font-semibold shadow-md flex items-center gap-2"
+                                onClick={() => setProfileOpen((open) => !open)}
+                                aria-label="Open profile menu"
                             >
-                                <ul className="py-2">
-                                    <li><NavLink to="/profile" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><User className="w-4 h-4" /> My Profile</NavLink></li>
-                                    <li><NavLink to="/settings" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><Settings className="w-4 h-4" /> Settings</NavLink></li>
-                                    <li><NavLink to="/jobs" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><Briefcase className="w-4 h-4" /> Jobs</NavLink></li>
-                                    <li><NavLink to="/support" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><HelpCircle className="w-4 h-4" /> Help Center</NavLink></li>
-                                    <li><NavLink to="/terms" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><FileText className="w-4 h-4" /> Terms</NavLink></li>
-                                    <li><NavLink to="/privacy" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><FileText className="w-4 h-4" /> Privacy Policy</NavLink></li>
-                                    <li><NavLink to="/logout" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-error/80 hover:text-white" : "hover:bg-error/10 hover:text-error"}`} onClick={() => setProfileOpen(false)} replace><LogOut className="w-4 h-4" /> Logout</NavLink></li>
-                                </ul>
-                            </div>
-                        )}
-                    </div>
+                                <User className="w-5 h-5" />
+                                {user?.firstName || "Profile"}
+                                <ChevronDown className="w-4 h-4" />
+                            </button>
+                            {profileOpen && (
+                                <div
+                                    className={`absolute right-0 mt-2 w-56 border rounded-xl shadow-2xl z-50 ${
+                                        theme === "dark"
+                                            ? "bg-gradient-to-br from-[#18181c]/95 via-[#23232a]/95 to-[#18181c]/95 text-white border-gray-700"
+                                            : "bg-white/95 text-gray-900 border-base-300"
+                                    }`}
+                                >
+                                    <ul className="py-2">
+                                        <li><NavLink to="/profile" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><User className="w-4 h-4" /> My Profile</NavLink></li>
+                                        <li><NavLink to="/settings" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><Settings className="w-4 h-4" /> Settings</NavLink></li>
+                                        {user?.role === "admin" && (
+                                            <li><NavLink to="/admin" className={`flex items-center gap-2 px-4 py-3 rounded-lg text-warning ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`} onClick={() => setProfileOpen(false)}><Briefcase className="w-4 h-4" /> Admin Panel</NavLink></li>
+                                        )}
+                                        <li><NavLink to="/logout" className={`flex items-center gap-2 px-4 py-3 rounded-lg ${theme === "dark" ? "hover:bg-error/80 hover:text-white" : "hover:bg-error/10 hover:text-error"}`} onClick={() => setProfileOpen(false)} replace><LogOut className="w-4 h-4" /> Logout</NavLink></li>
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <NavLink to="/login" className="btn btn-ghost btn-sm">Login</NavLink>
+                            <NavLink to="/signup" className="btn btn-primary btn-sm">Sign Up</NavLink>
+                        </div>
+                    )}
                 </div>
             </div>
             {/* Mobile Menu Dropdown */}
@@ -118,45 +128,21 @@ const Navbar = () => {
                         <li><NavLink to="/leaderboard" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Leaderboard</NavLink></li>
                         <li><NavLink to="/contests" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Contests</NavLink></li>
                         <li><NavLink to="/discuss" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Discuss</NavLink></li>
-                        <li>
-                            <button
-                                className={`btn btn-outline btn-sm w-full flex items-center gap-2 rounded-full border-base-300 px-3 py-1 ${theme === "dark" ? "bg-black text-white border-white" : "bg-base-100"}`}
-                                onClick={() => { setTheme(theme === "light" ? "dark" : "light"); setMenuOpen(false); }}
-                                aria-label="Toggle theme"
-                                style={{ minWidth: 48 }}
-                            >
-                                <span className="relative inline-block w-8 h-5">
-                                    <span className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-8 h-5 rounded-full transition-colors duration-300 ${theme === "dark" ? "bg-gray-700" : "bg-gray-300"}`}></span>
-                                    <span className={`absolute top-1/2 left-0 transform -translate-y-1/2 transition-all duration-300 ${theme === "dark" ? "translate-x-3" : "translate-x-0"}`}>
-                                        <span className={`block w-5 h-5 rounded-full shadow ${theme === "dark" ? "bg-white" : "bg-gray-700"}`}></span>
-                                    </span>
-                                </span>
-                            </button>
-                        </li>
-                        <li>
-                            <button
-                                className="btn btn-primary w-full text-left flex items-center gap-2 rounded-full font-semibold shadow-md"
-                                onClick={() => setProfileOpen((open) => !open)}
-                                aria-label="Open profile menu"
-                            >
-                                <User className="w-5 h-5" />
-                                {user && user.username ? user.username : "Profile"}
-                                <ChevronDown className="w-4 h-4" />
-                            </button>
-                            {profileOpen && (
-                                <div className={`mt-2 w-full border rounded-xl shadow-xl z-50 animate-fade-in transition-all duration-300 ${theme === "dark" ? "bg-gradient-to-br from-[#18181c]/95 via-[#23232a]/95 to-[#18181c]/95 text-white border-gray-700" : "bg-white/95 text-gray-900 border-base-300"}`}>
-                                    <ul className="py-2">
-                                        <li><NavLink to="/profile" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`}><User className="w-4 h-4" /> My Profile</NavLink></li>
-                                        <li><NavLink to="/settings" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`}><Settings className="w-4 h-4" /> Settings</NavLink></li>
-                                        <li><NavLink to="/jobs" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`}><Briefcase className="w-4 h-4" /> Jobs</NavLink></li>
-                                        <li><NavLink to="/support" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`}><HelpCircle className="w-4 h-4" /> Help Center</NavLink></li>
-                                        <li><NavLink to="/terms" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`}><FileText className="w-4 h-4" /> Terms</NavLink></li>
-                                        <li><NavLink to="/privacy" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-800/80" : "hover:bg-base-200"}`}><FileText className="w-4 h-4" /> Privacy Policy</NavLink></li>
-                                        <li><NavLink to="/logout" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${theme === "dark" ? "hover:bg-error/80 hover:text-white" : "hover:bg-error/10 hover:text-error"}`} replace><LogOut className="w-4 h-4" /> Logout</NavLink></li>
-                                    </ul>
-                                </div>
-                            )}
-                        </li>
+                        {isAuthenticated && user?.role === "admin" && (
+                            <li><NavLink to="/admin" className="btn btn-ghost w-full text-left text-warning" onClick={() => setMenuOpen(false)}>Admin Panel</NavLink></li>
+                        )}
+                        {!isAuthenticated && (
+                            <>
+                                <li><NavLink to="/login" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
+                                <li><NavLink to="/signup" className="btn btn-primary w-full text-left" onClick={() => setMenuOpen(false)}>Sign Up</NavLink></li>
+                            </>
+                        )}
+                        {isAuthenticated && (
+                            <>
+                                <li><NavLink to="/profile" className="btn btn-ghost w-full text-left" onClick={() => setMenuOpen(false)}>My Profile</NavLink></li>
+                                <li><NavLink to="/logout" className="btn btn-error w-full text-left" onClick={() => setMenuOpen(false)}>Logout</NavLink></li>
+                            </>
+                        )}
                     </ul>
                 </div>
             )}

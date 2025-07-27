@@ -72,7 +72,9 @@ function Homepage() {
                             </NavLink>
                         </div>
                         <div className="hidden md:block ml-12 flex-1 flex justify-center">
-                            <img src="/vite.svg" alt="Coding" className="w-64 h-64 object-contain drop-shadow-2xl rounded-2xl border-2 border-primary/40 bg-[#23232a]" />
+                            <div className="w-64 h-64 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl border-2 border-primary/40 flex items-center justify-center">
+                                <div className="text-6xl">💻</div>
+                            </div>
                         </div>
                     </div>
                 </div>
