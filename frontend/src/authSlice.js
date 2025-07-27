@@ -14,6 +14,7 @@ export const registerUser = createAsyncThunk(
 );
 
 
+// Save token to localStorage on login
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
@@ -41,6 +42,7 @@ export const checkAuth = createAsyncThunk(
   }
 );
 
+// Remove token from localStorage on logout
 export const logoutUser = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {

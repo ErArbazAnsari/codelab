@@ -21,17 +21,12 @@ const createProblem = async (req, res) => {
         referenceSolution,
         problemCreator,
     } = req.body;
-
+    if (!title || !description || !difficulty || !tags || !visibleTestCases || !referenceSolution) {
+        return res.status(400).send("Missing required fields");
+    }
     try {
         for (const { language, completeCode } of referenceSolution) {
-            // source_code:
-            // language_id:
-            // stdin:
-            // expectedOutput:
-
             const languageId = getLanguageById(language);
-
-            // I am creating Batch submission
             const submissions = visibleTestCases.map((testcase) => ({
                 source_code: completeCode,
                 language_id: languageId,
@@ -40,25 +35,25 @@ const createProblem = async (req, res) => {
             }));
 
             const submitResult = await submitBatch(submissions);
-            // console.log(submitResult);
-
             const resultToken = submitResult.map((value) => value.token);
-
-            // ["db54881d-bcf5-4c7b-a2e3-d33fe7e25de7","ecc52a9b-ea80-4a00-ad50-4ab6cc3bb2a1","1b35ec3b-5776-48ef-b646-d5522bdeb2cc"]
-
             const testResult = await submitToken(resultToken);
 
-            console.log(testResult);
+            // Debug: log all test results
+            console.log('Reference Solution:', language);
+            console.log('Test Results:', testResult);
 
-            for (const test of testResult) {
-                if (test.status_id != 3) {
-                    return res.status(400).send("Error Occured");
-                }
+            // Instead of failing on first error, collect all errors
+            const failedTests = testResult.filter(test => test.status_id != 3);
+            if (failedTests.length > 0) {
+                return res.status(400).json({
+                    message: "Reference solution did not pass all test cases.",
+                    language,
+                    failedTests
+                });
             }
         }
 
         // We can store it in our DB
-
         const userProblem = await Problem.create({
             ...req.body,
             problemCreator: req.result._id,

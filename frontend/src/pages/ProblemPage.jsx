@@ -19,6 +19,7 @@ import {
     Brain,
     Copy,
     RotateCcw,
+    CheckCircle,
 } from "lucide-react";
 
 const langMap = {
@@ -50,7 +51,9 @@ const ProblemPage = () => {
         const fetchProblem = async () => {
             setLoading(true);
             try {
-                const response = await axiosClient.get(`/problem/problemById/${problemId}`);
+                const response = await axiosClient.get(
+                    `/problem/problemById/${problemId}`
+                );
                 setProblem(response.data);
             } catch (error) {
                 console.error("Error fetching problem:", error);

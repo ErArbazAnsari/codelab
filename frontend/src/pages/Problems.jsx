@@ -34,7 +34,7 @@ useEffect(() => {
             const problemsRes = await axiosClient.get("/problem/getAllProblem");
             setProblems(problemsRes.data);
         } catch (error) {
-            window.alert("Failed to fetch problems");
+            console.error("Failed to fetch problems:", error);
         } finally {
             setLoading(false);
         }
@@ -46,7 +46,7 @@ useEffect(() => {
             const solvedRes = await axiosClient.get("/problem/problemSolvedByUser");
             setSolvedProblems(solvedRes.data);
         } catch (error) {
-            window.alert("Failed to fetch solved problems");
+            console.error("Failed to fetch solved problems:", error);
         } finally {
             setLoading(false);
         }

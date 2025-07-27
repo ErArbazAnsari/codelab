@@ -23,6 +23,7 @@ import Settings from "./pages/Settings";
 import Problems from "./pages/Problems";
 import ProblemPage from "./pages/ProblemPage";
 import Admin from "./pages/Admin";
+import AdminUpdate from "./components/AdminUpdate.jsx";
 
 function App() {
     const dispatch = useDispatch();
@@ -49,10 +50,9 @@ function App() {
             : currentPath === route
     );
 
+    // Restore token from localStorage on app load
     useEffect(() => {
-        if (!isPublicRoute) {
-            dispatch(checkAuth());
-        }
+        dispatch(checkAuth());
     }, [dispatch, isPublicRoute]);
 
     return (
@@ -86,6 +86,7 @@ function ThemeConsumerApp({ isAuthenticated, user }) {
                     {/* Protected routes */}
                     <Route path="/admin" element={isAuthenticated && user?.role === "admin" ? <Admin /> : <Navigate to="/login" />} />
                     <Route path="/admin/create" element={isAuthenticated && user?.role === "admin" ? <AdminPanel /> : <Navigate to="/login" />} />
+                    <Route path="/admin/update" element={isAuthenticated && user?.role === "admin" ? <AdminUpdate /> : <Navigate to="/login" />} />
                     <Route path="/admin/delete" element={isAuthenticated && user?.role === "admin" ? <AdminDelete /> : <Navigate to="/login" />} />
                     <Route path="/admin/video" element={isAuthenticated && user?.role === "admin" ? <AdminVideo /> : <Navigate to="/login" />} />
                     <Route path="/admin/upload/:problemId" element={isAuthenticated && user?.role === "admin" ? <AdminUpload /> : <Navigate to="/login" />} />
