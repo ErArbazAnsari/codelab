@@ -141,6 +141,15 @@ const ProblemPage = () => {
     };
 
     const handleSubmitCode = async () => {
+        if (!code.trim()) {
+            setSubmitResult({
+                accepted: false,
+                error: "Please write some code before submitting"
+            });
+            setActiveRightTab("result");
+            return;
+        }
+
         setLoading(true);
         setSubmitResult(null);
 
@@ -153,13 +162,17 @@ const ProblemPage = () => {
                 }
             );
 
+            if (response.data.success === false) {
+                throw new Error(response.data.error || "Submission failed");
+            }
+
             setSubmitResult(response.data);
             setActiveRightTab("result");
         } catch (error) {
             console.error("Error submitting code:", error);
             setSubmitResult({
                 accepted: false,
-                error: "Submission failed",
+                error: error.response?.data?.error || error.message || "Failed to submit code. Please try again.",
             });
             setActiveRightTab("result");
         } finally {
