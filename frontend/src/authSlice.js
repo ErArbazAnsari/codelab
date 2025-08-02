@@ -29,9 +29,30 @@ export const loginUser = createAsyncThunk(
 
 export const checkAuth = createAsyncThunk(
   'auth/check',
-  async (_, { rejectWithValue }) => {
+  async (_, { dispatch, rejectWithValue }) => {
     try {
       const { data } = await axiosClient.get('/user/check');
+      
+      // If successful, update the auth state
+      if (data.user) {
+        // Set up a timer to refresh the session periodically (every 45 minutes)
+        const refreshInterval = setInterval(async () => {
+          try {
+            const refreshResponse = await axiosClient.post('/user/refresh-token');
+            if (!refreshResponse.data.success) {
+              clearInterval(refreshInterval);
+              dispatch(logoutUser());
+            }
+          } catch (error) {
+            clearInterval(refreshInterval);
+            dispatch(logoutUser());
+          }
+        }, 45 * 60 * 1000); // 45 minutes
+
+        // Clean up interval on component unmount
+        window.addEventListener('beforeunload', () => clearInterval(refreshInterval));
+      }
+
       return data.user;
     } catch (error) {
       if (error.response?.status === 401) {

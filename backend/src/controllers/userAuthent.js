@@ -80,8 +80,29 @@ const login = async (req,res)=>{
             role:user.role,
         }
 
-        const token =  jwt.sign({_id:user._id , emailId:emailId, role:user.role},process.env.JWT_KEY,{expiresIn: 60*60});
+        // Generate access token (short-lived)
+        const token = jwt.sign(
+            {_id: user._id, emailId: emailId, role: user.role},
+            process.env.JWT_KEY,
+            {expiresIn: '1h'} // 1 hour
+        );
+        
+        // Generate refresh token (long-lived)
+        const refreshToken = jwt.sign(
+            {_id: user._id},
+            process.env.JWT_REFRESH_KEY || process.env.JWT_KEY,
+            {expiresIn: '7d'} // 7 days
+        );
+
+        // Set cookies
         res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 1000 // 1 hour
+        });
+        
+        res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',

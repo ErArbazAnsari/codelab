@@ -7,6 +7,7 @@ const cookieParser = require("cookie-parser");
 const authRouter = require("./src/routes/userAuth");
 const redisClient = require("./src/config/redis");
 const problemRouter = require("./src/routes/problemCreator");
+const refreshRouter = require("./src/routes/refresh");
 const submitRouter = require("./src/routes/submit");
 const aiRouter = require("./src/routes/aiChatting");
 const videoRouter = require("./src/routes/videoCreator");
@@ -41,6 +42,7 @@ app.get("/health", (req, res) => {
 // API routes
 app.use("/api/user", authRouter);
 app.use("/api/problem", problemRouter);
+app.use("/api/user", refreshRouter);
 app.use("/api/submission", submitRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/video", videoRouter);

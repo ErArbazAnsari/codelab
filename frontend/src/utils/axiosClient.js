@@ -7,6 +7,9 @@ const axiosClient = axios.create({
     headers: {
         "Content-Type": "application/json",
     },
+    // Ensure cookies are sent with every request
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
 });
 
 axiosClient.interceptors.request.use(
@@ -19,16 +22,7 @@ axiosClient.interceptors.request.use(
     }
 );
 
-// Request interceptor
-axiosClient.interceptors.request.use(
-    (config) => {
-        // Add loading state or auth token if needed
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+// Remove duplicate request interceptor as we already have one above
 
 // Response interceptor
 axiosClient.interceptors.response.use(
