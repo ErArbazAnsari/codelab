@@ -118,7 +118,7 @@ const ProblemPage = () => {
 
         try {
             const response = await axiosClient.post(
-                `/submit/run/${problemId}`,
+                `/submission/run/${problemId}`,
                 {
                     code,
                     language: selectedLanguage,
@@ -146,7 +146,7 @@ const ProblemPage = () => {
 
         try {
             const response = await axiosClient.post(
-                `/submit/submit/${problemId}`,
+                `/submission/submit/${problemId}`,
                 {
                     code: code,
                     language: selectedLanguage,

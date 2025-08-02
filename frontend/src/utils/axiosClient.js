@@ -3,7 +3,7 @@ import axios from "axios";
 const axiosClient = axios.create({
     baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
     withCredentials: true,
-    timeout: 30000, // 30 seconds timeout
+    timeout: 60000, // Increased timeout to 60 seconds for code execution
     headers: {
         "Content-Type": "application/json",
     },
@@ -29,26 +29,63 @@ axiosClient.interceptors.response.use(
     (response) => {
         return response;
     },
-    (error) => {
-        // Only redirect to /login for protected API requests
-        if (error.response?.status === 401) {
-            const currentPath = window.location.pathname;
-            const url = error.config.url || "";
-            // List of public API endpoints (add more if needed)
-            const isPublicApi = url.includes("/user/check") || url.includes("/contests") || url.includes("/leaderboard") || url.includes("/discuss") || url.includes("/homepage");
-            if (!isPublicApi && currentPath !== "/login" && currentPath !== "/signup") {
-                window.location.href = "/login";
+    async (error) => {
+        const originalRequest = error.config;
+
+        // Handle retries for network errors and 5xx responses
+        if ((error.message === 'Network Error' || (error.response && error.response.status >= 500)) 
+            && !originalRequest._retry) {
+            originalRequest._retry = true;
+            try {
+                // Wait 1 second before retrying
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return await axiosClient(originalRequest);
+            } catch (retryError) {
+                console.error('Retry failed:', retryError);
             }
         }
 
-        if (error.response?.status === 429) {
-            // Rate limit exceeded
-            console.warn("Rate limit exceeded");
+        // Handle authentication errors
+        if (error.response?.status === 401) {
+            const currentPath = window.location.pathname;
+            const url = error.config.url || "";
+            
+            // List of public API endpoints
+            const isPublicApi = url.includes("/user/check") || 
+                              url.includes("/contests") || 
+                              url.includes("/leaderboard") || 
+                              url.includes("/discuss") || 
+                              url.includes("/homepage");
+
+            if (!isPublicApi && currentPath !== "/login" && currentPath !== "/signup") {
+                // Try to refresh token first
+                try {
+                    const refreshResponse = await axiosClient.post('/user/refresh-token');
+                    if (refreshResponse.data.success) {
+                        // Retry the original request
+                        return axiosClient(originalRequest);
+                    }
+                } catch (refreshError) {
+                    console.error('Token refresh failed:', refreshError);
+                    window.location.href = "/login";
+                }
+            }
         }
 
+        // Handle rate limiting
+        if (error.response?.status === 429) {
+            console.warn("Rate limit exceeded. Please wait before trying again.");
+            error.message = "Too many requests. Please wait a moment before trying again.";
+        }
+
+        // Handle timeouts
         if (error.code === "ECONNABORTED") {
-            // Timeout error
-            error.message = "Request timeout. Please try again.";
+            error.message = "Request timed out. Please check your connection and try again.";
+        }
+
+        // Handle Judge0 specific errors
+        if (error.response?.data?.error) {
+            error.message = error.response.data.error;
         }
 
         return Promise.reject(error);
