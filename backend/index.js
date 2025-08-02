@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` });
+require("dotenv").config({ path: `.env.${process.env.NODE_ENV}` });
 const cors = require("cors");
 const main = require("./src/config/db");
 const cookieParser = require("cookie-parser");
@@ -18,13 +18,16 @@ const statsRouter = require("./src/routes/stats");
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
-app.use(cors({
-    origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-    exposedHeaders: ["Set-Cookie"]
-}));
+app.use(
+    cors({
+        origin:
+            process.env.CLIENT_URL || "https://coderarmy-codelab.vercel.app",
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        credentials: true,
+        exposedHeaders: ["Set-Cookie"],
+    })
+);
 // Health check endpoint
 app.get("/health", (req, res) => {
     res.status(200).json({
