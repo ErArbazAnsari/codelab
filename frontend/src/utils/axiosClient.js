@@ -41,7 +41,7 @@ axiosClient.interceptors.response.use(
             const currentPath = window.location.pathname;
             const url = error.config.url || "";
             // List of public API endpoints (add more if needed)
-            const isPublicApi = url.includes("/user/check") || url.includes("/problem") || url.includes("/contests") || url.includes("/leaderboard") || url.includes("/discuss") || url.includes("/homepage");
+            const isPublicApi = url.includes("/user/check") || url.includes("/contests") || url.includes("/leaderboard") || url.includes("/discuss") || url.includes("/homepage");
             if (!isPublicApi && currentPath !== "/login" && currentPath !== "/signup") {
                 window.location.href = "/login";
             }
