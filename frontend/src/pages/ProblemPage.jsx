@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../utils/ThemeContext.jsx";
 import { useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
 import Editor from "@monaco-editor/react";
 import axiosClient from "../utils/axiosClient";
 import SubmissionHistory from "../components/SubmissionHistory";
@@ -22,18 +21,34 @@ import {
     CheckCircle,
 } from "lucide-react";
 
+// Frontend to Backend language mapping
 const langMap = {
     cpp: "C++",
     java: "Java",
     javascript: "JavaScript",
+    python: "Python",
+};
+
+// Backend to Frontend language mapping
+const reverseLangMap = {
+    "C++": "cpp",
+    Java: "java",
+    JavaScript: "javascript",
+    Python: "python",
+};
+
+const getLanguageForMonaco = (lang) => {
+    return reverseLangMap[lang] || lang;
 };
 
 const ProblemPage = () => {
     const [problem, setProblem] = useState(null);
     const { theme } = useTheme();
-    const [selectedLanguage, setSelectedLanguage] = useState("javascript");
+    const [selectedLanguage, setSelectedLanguage] = useState("cpp");
     const [code, setCode] = useState("");
     const [loading, setLoading] = useState(false);
+    const [runLoading, setRunLoading] = useState(false);
+    const [submitLoading, setSubmitLoading] = useState(false);
     const [runResult, setRunResult] = useState(null);
     const [submitResult, setSubmitResult] = useState(null);
     const [activeLeftTab, setActiveLeftTab] = useState("description");
@@ -41,42 +56,85 @@ const ProblemPage = () => {
     const [customInput, setCustomInput] = useState("");
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [fontSize, setFontSize] = useState(14);
-    const [panelSplit, setPanelSplit] = useState(50); // Left panel percentage
+    const [panelSplit, setPanelSplit] = useState(50);
     const [isResizing, setIsResizing] = useState(false);
     const editorRef = useRef(null);
     const resizeRef = useRef(null);
     const { problemId } = useParams();
 
+    const getDifficultyColor = (difficulty) => {
+        switch (difficulty?.toLowerCase()) {
+            case "easy":
+                return theme === "dark"
+                    ? "text-green-400 bg-green-900/20 border-green-700"
+                    : "text-green-600 bg-green-50 border-green-200";
+            case "medium":
+                return theme === "dark"
+                    ? "text-yellow-400 bg-yellow-900/20 border-yellow-700"
+                    : "text-yellow-600 bg-yellow-50 border-yellow-200";
+            case "hard":
+                return theme === "dark"
+                    ? "text-red-400 bg-red-900/20 border-red-700"
+                    : "text-red-600 bg-red-50 border-red-200";
+            default:
+                return theme === "dark"
+                    ? "text-gray-400 bg-gray-800 border-gray-700"
+                    : "text-gray-600 bg-gray-100 border-gray-300";
+        }
+    };
+
     useEffect(() => {
         const fetchProblem = async () => {
-            setLoading(true);
+            if (!problemId) {
+                console.error("No problem ID provided");
+                return;
+            }
             try {
-                const response = await axiosClient.get(
-                    `/problem/problemById/${problemId}`
-                );
-                setProblem(response.data);
+                setLoading(true);
+                const response = await axiosClient.get(`/problem/problemById/${problemId}`);
+                if (response.data) {
+                    // Process the data to match our component's expectations
+                    const problemData = {
+                        ...response.data,
+                        tags: response.data.tags
+                            ? response.data.tags.split(",").map((tag) => tag.trim())
+                            : [],
+                        examples: response.data.visibleTestCases || [],
+                        description: response.data.description || "",
+                        difficulty: response.data.difficulty || "Medium",
+                        startCode: response.data.startCode || [],
+                        referenceSolution: response.data.referenceSolution || [],
+                        constraints: response.data.constraints || [],
+                    };
+                    setProblem(problemData);
+                } else {
+                    console.error("No data received from the server");
+                }
             } catch (error) {
                 console.error("Error fetching problem:", error);
+                if (error.response) {
+                    if (error.response.status === 401) {
+                        window.location.href = "/login";
+                        return;
+                    }
+                }
             } finally {
                 setLoading(false);
             }
         };
-
         fetchProblem();
     }, [problemId]);
 
-    // Update code when language changes
     useEffect(() => {
         if (problem && problem.startCode) {
+            const languageCode = langMap[selectedLanguage]; // Convert cpp to C++, etc.
             const initialCode =
-                problem.startCode.find(
-                    (sc) => sc.language === langMap[selectedLanguage]
-                )?.initialCode || "";
+                problem.startCode.find((sc) => sc.language === languageCode)
+                    ?.initialCode || "";
             setCode(initialCode);
         }
     }, [selectedLanguage, problem]);
 
-    // Panel resizing functionality
     useEffect(() => {
         const handleMouseMove = (e) => {
             if (isResizing) {
@@ -104,8 +162,31 @@ const ProblemPage = () => {
         setCode(value || "");
     };
 
-    const handleEditorDidMount = (editor) => {
+    const handleEditorDidMount = (editor, monacoInstance) => {
         editorRef.current = editor;
+
+        // Add keyboard shortcuts for zooming
+        editor.addCommand(
+            monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.Equal,
+            () => {
+                setFontSize((prev) => Math.min(prev + 1, 30));
+            }
+        );
+        editor.addCommand(
+            monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.Minus,
+            () => {
+                setFontSize((prev) => Math.max(prev - 1, 8));
+            }
+        );
+
+        // Enable mouse wheel zooming
+        editor.onMouseWheel((e) => {
+            if (e.browserEvent.ctrlKey) {
+                const delta = e.browserEvent.deltaY > 0 ? -1 : 1;
+                setFontSize((prev) => Math.min(Math.max(prev + delta, 8), 30));
+                e.browserEvent.preventDefault();
+            }
+        });
     };
 
     const handleLanguageChange = (language) => {
@@ -113,7 +194,7 @@ const ProblemPage = () => {
     };
 
     const handleRun = async () => {
-        setLoading(true);
+        setRunLoading(true);
         setRunResult(null);
 
         try {
@@ -132,11 +213,11 @@ const ProblemPage = () => {
             console.error("Error running code:", error);
             setRunResult({
                 success: false,
-                error: "Internal server error",
+                error: error.response?.data?.message || "Internal server error",
             });
             setActiveRightTab("testcase");
         } finally {
-            setLoading(false);
+            setRunLoading(false);
         }
     };
 
@@ -144,13 +225,13 @@ const ProblemPage = () => {
         if (!code.trim()) {
             setSubmitResult({
                 accepted: false,
-                error: "Please write some code before submitting"
+                error: "Please write some code before submitting",
             });
             setActiveRightTab("result");
             return;
         }
 
-        setLoading(true);
+        setSubmitLoading(true);
         setSubmitResult(null);
 
         try {
@@ -163,54 +244,23 @@ const ProblemPage = () => {
             );
 
             if (response.data.success === false) {
-                throw new Error(response.data.error || "Submission failed");
+                setSubmitResult({
+                    accepted: false,
+                    error: response.data.message || "Submission failed",
+                });
+            } else {
+                setSubmitResult(response.data);
             }
-
-            setSubmitResult(response.data);
             setActiveRightTab("result");
         } catch (error) {
             console.error("Error submitting code:", error);
             setSubmitResult({
                 accepted: false,
-                error: error.response?.data?.error || error.message || "Failed to submit code. Please try again.",
+                error: error.response?.data?.message || "Internal server error",
             });
             setActiveRightTab("result");
         } finally {
-            setLoading(false);
-        }
-    };
-
-    const getLanguageForMonaco = (lang) => {
-        switch (lang) {
-            case "javascript":
-                return "javascript";
-            case "java":
-                return "java";
-            case "cpp":
-                return "cpp";
-            default:
-                return "javascript";
-        }
-    };
-
-    const getDifficultyColor = (difficulty) => {
-        switch (difficulty?.toLowerCase()) {
-            case "easy":
-                return theme === "dark"
-                    ? "text-green-400 bg-green-900/20 border-green-700"
-                    : "text-green-600 bg-green-50 border-green-200";
-            case "medium":
-                return theme === "dark"
-                    ? "text-yellow-400 bg-yellow-900/20 border-yellow-700"
-                    : "text-yellow-600 bg-yellow-50 border-yellow-200";
-            case "hard":
-                return theme === "dark"
-                    ? "text-red-400 bg-red-900/20 border-red-700"
-                    : "text-red-600 bg-red-50 border-red-200";
-            default:
-                return theme === "dark"
-                    ? "text-gray-400 bg-gray-800 border-gray-700"
-                    : "text-gray-600 bg-gray-100 border-gray-300";
+            setSubmitLoading(false);
         }
     };
 
@@ -327,935 +377,841 @@ const ProblemPage = () => {
                     : "bg-white text-gray-900"
             } ${isFullScreen ? "fixed inset-0 z-50" : ""}`}
         >
-            {/* Header with Problem Info */}
+            {/* Problem Header */}
             <div
-                className={`flex items-center justify-between px-6 py-4 border-b ${
+                className={`px-6 py-4 border-b ${
                     theme === "dark"
                         ? "border-gray-700 bg-gray-800"
                         : "border-gray-200 bg-gray-50"
                 }`}
             >
-                <div className="flex items-center space-x-4">
-                    <h1 className="text-xl font-bold">{problem.title}</h1>
-                    <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium border ${getDifficultyColor(
-                            problem.difficulty
-                        )}`}
-                    >
-                        {problem.difficulty?.charAt(0).toUpperCase() +
-                            problem.difficulty?.slice(1)}
-                    </span>
-                    {problem.tags && (
-                        <span
-                            className={`px-3 py-1 rounded-full text-sm ${
-                                theme === "dark"
-                                    ? "bg-blue-900/30 text-blue-300"
-                                    : "bg-blue-100 text-blue-700"
-                            }`}
-                        >
-                            {problem.tags}
-                        </span>
-                    )}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-xl font-bold">{problem.title}</h1>
+                        <div className="flex items-center mt-2 space-x-4">
+                            <span
+                                className={`px-3 py-1 text-sm rounded-full border ${getDifficultyColor(
+                                    problem.difficulty
+                                )}`}
+                            >
+                                {problem.difficulty}
+                            </span>
+                            {Array.isArray(problem.tags) &&
+                                problem.tags.map((tag, index) => (
+                                    <span
+                                        key={index}
+                                        className={`px-3 py-1 text-sm rounded-full ${
+                                            theme === "dark"
+                                                ? "bg-gray-700 text-gray-300"
+                                                : "bg-gray-200 text-gray-700"
+                                        }`}
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
+                        </div>
+                    </div>
                 </div>
-                <button
-                    onClick={toggleFullScreen}
-                    className={`p-2 rounded-lg transition-colors ${
-                        theme === "dark"
-                            ? "hover:bg-gray-700"
-                            : "hover:bg-gray-200"
-                    }`}
-                    title={
-                        isFullScreen ? "Exit fullscreen" : "Enter fullscreen"
-                    }
-                >
-                    {isFullScreen ? (
-                        <Minimize2 className="w-5 h-5" />
-                    ) : (
-                        <Maximize2 className="w-5 h-5" />
-                    )}
-                </button>
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1 flex">
-                {/* Left Panel */}
-                <div
-                    className={`flex flex-col border-r ${
-                        theme === "dark"
-                            ? "border-gray-700 bg-gray-850"
-                            : "border-gray-200 bg-white"
-                    }`}
-                    style={{ width: `${panelSplit}%` }}
-                >
-                    {/* Left Tabs */}
+            <div className={`flex flex-1 overflow-hidden`}>
+                {/* Left Panel - Problem Details */}
+                <div className="w-[40%] border-r flex flex-col overflow-hidden h-full">
+                    {/* Tab Bar */}
                     <div
                         className={`flex border-b ${
                             theme === "dark"
-                                ? "border-gray-700 bg-gray-800"
-                                : "border-gray-200 bg-gray-50"
+                                ? "border-gray-700"
+                                : "border-gray-200"
                         }`}
                     >
                         {leftTabs.map((tab) => (
                             <button
                                 key={tab.key}
-                                className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                                onClick={() => setActiveLeftTab(tab.key)}
+                                className={`flex items-center px-4 py-3 space-x-2 text-sm font-medium transition-all relative ${
                                     activeLeftTab === tab.key
                                         ? theme === "dark"
-                                            ? "border-blue-400 text-blue-400 bg-gray-700"
-                                            : "border-blue-500 text-blue-600 bg-white"
+                                            ? "border-b-2 border-blue-500 text-blue-500 bg-blue-500/10"
+                                            : "border-b-2 border-blue-600 text-blue-600 bg-blue-50"
                                         : theme === "dark"
-                                        ? "border-transparent text-gray-400 hover:text-blue-400 hover:bg-gray-700"
-                                        : "border-transparent text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                                        ? "text-gray-400 hover:text-gray-300 hover:bg-gray-800"
+                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                 }`}
-                                onClick={() => setActiveLeftTab(tab.key)}
                             >
                                 {tab.icon}
                                 <span>{tab.label}</span>
+                                {tab.key === "chatAI" && (
+                                    <span
+                                        className={`absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold rounded-full 
+                                        ${
+                                            theme === "dark"
+                                                ? "bg-blue-500 text-white"
+                                                : "bg-blue-100 text-blue-600"
+                                        }`}
+                                    >
+                                        AI
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
 
-                    {/* Left Content */}
-                    <div className="flex-1 overflow-y-auto">
+                    {/* Tab Content */}
+                    <div className="flex-1 overflow-y-auto p-6">
                         {activeLeftTab === "description" && (
-                            <div className="p-6">
+                            <div className="prose max-w-none">
                                 <div
-                                    className={`prose max-w-none ${
-                                        theme === "dark" ? "prose-invert" : ""
-                                    }`}
+                                    className={
+                                        theme === "dark"
+                                            ? "text-gray-300"
+                                            : "text-gray-700"
+                                    }
                                 >
-                                    <div className="leading-relaxed whitespace-pre-wrap mb-8">
-                                        {problem.description}
-                                    </div>
-                                </div>
+                                    <div
+                                        dangerouslySetInnerHTML={{
+                                            __html: problem.description,
+                                        }}
+                                    />
 
-                                {problem.visibleTestCases &&
-                                    problem.visibleTestCases.length > 0 && (
-                                        <div className="mt-8">
-                                            <h3 className="text-lg font-semibold mb-4">
-                                                Examples
-                                            </h3>
-                                            <div className="space-y-4">
-                                                {problem.visibleTestCases.map(
-                                                    (example, index) => (
+                                    {problem.examples &&
+                                        problem.examples.length > 0 && (
+                                            <div className="mt-6">
+                                                <h3 className="text-lg font-semibold mb-4">
+                                                    Examples
+                                                </h3>
+                                                {problem.examples.map(
+                                                    (testCase, index) => (
                                                         <div
                                                             key={index}
-                                                            className={`rounded-lg p-4 border ${
+                                                            className={`mb-4 p-4 rounded-lg ${
                                                                 theme === "dark"
-                                                                    ? "bg-gray-800 border-gray-700"
-                                                                    : "bg-gray-50 border-gray-200"
+                                                                    ? "bg-gray-800"
+                                                                    : "bg-gray-50"
                                                             }`}
                                                         >
-                                                            <h4 className="font-semibold mb-3">
-                                                                Example{" "}
-                                                                {index + 1}
-                                                            </h4>
-                                                            <div className="space-y-3 text-sm">
-                                                                <div
-                                                                    className={`p-3 rounded border font-mono ${
-                                                                        theme ===
-                                                                        "dark"
-                                                                            ? "bg-gray-900 border-gray-600"
-                                                                            : "bg-white border-gray-300"
-                                                                    }`}
-                                                                >
-                                                                    <span className="font-semibold text-blue-500">
-                                                                        Input:
-                                                                    </span>
-                                                                    <pre className="mt-1">
-                                                                        {
-                                                                            example.input
-                                                                        }
-                                                                    </pre>
-                                                                </div>
-                                                                <div
-                                                                    className={`p-3 rounded border font-mono ${
-                                                                        theme ===
-                                                                        "dark"
-                                                                            ? "bg-gray-900 border-gray-600"
-                                                                            : "bg-white border-gray-300"
-                                                                    }`}
-                                                                >
-                                                                    <span className="font-semibold text-green-500">
-                                                                        Output:
-                                                                    </span>
-                                                                    <pre className="mt-1">
-                                                                        {
-                                                                            example.output
-                                                                        }
-                                                                    </pre>
-                                                                </div>
-                                                                {example.explanation && (
-                                                                    <div
-                                                                        className={`p-3 rounded border ${
-                                                                            theme ===
-                                                                            "dark"
-                                                                                ? "bg-gray-900 border-gray-600"
-                                                                                : "bg-white border-gray-300"
-                                                                        }`}
-                                                                    >
-                                                                        <span className="font-semibold text-yellow-500">
-                                                                            Explanation:
-                                                                        </span>
-                                                                        <p className="mt-1">
-                                                                            {
-                                                                                example.explanation
-                                                                            }
-                                                                        </p>
-                                                                    </div>
-                                                                )}
+                                                            <div className="mb-2">
+                                                                <span className="font-semibold">
+                                                                    Input:{" "}
+                                                                </span>
+                                                                <code className="ml-2 font-mono">
+                                                                    {
+                                                                        testCase.input
+                                                                    }
+                                                                </code>
                                                             </div>
+                                                            <div className="mb-2">
+                                                                <span className="font-semibold">
+                                                                    Expected
+                                                                    Output:{" "}
+                                                                </span>
+                                                                <code className="ml-2 font-mono">
+                                                                    {
+                                                                        testCase.expectedOutput
+                                                                    }
+                                                                </code>
+                                                            </div>
+                                                            {testCase.explanation && (
+                                                                <div>
+                                                                    <span className="font-semibold">
+                                                                        Explanation:{" "}
+                                                                    </span>
+                                                                    <span>
+                                                                        {
+                                                                            testCase.explanation
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )
                                                 )}
                                             </div>
-                                        </div>
+                                        )}
+
+                                    {Array.isArray(problem.constraints) &&
+                                        problem.constraints.length > 0 && (
+                                            <div className="mt-6">
+                                                <h3 className="text-lg font-semibold mb-4">
+                                                    Constraints
+                                                </h3>
+                                                <ul className="list-disc pl-6 space-y-2">
+                                                    {problem.constraints.map(
+                                                        (constraint, index) => (
+                                                            <li key={index}>
+                                                                {constraint}
+                                                            </li>
+                                                        )
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        )}
+                                </div>
+                            </div>
+                        )}
+                        {activeLeftTab === "solutions" && (
+                            <div className="space-y-6">
+                                <h3 className="text-lg font-semibold mb-4">
+                                    Reference Solutions
+                                </h3>
+                                {problem.referenceSolution &&
+                                    problem.referenceSolution.map(
+                                        (solution, index) => (
+                                            <div
+                                                key={index}
+                                                className={`p-4 rounded-lg ${
+                                                    theme === "dark"
+                                                        ? "bg-gray-800"
+                                                        : "bg-gray-50"
+                                                }`}
+                                            >
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <h4
+                                                        className={`font-medium ${
+                                                            theme === "dark"
+                                                                ? "text-gray-200"
+                                                                : "text-gray-700"
+                                                        }`}
+                                                    >
+                                                        {solution.language}{" "}
+                                                        Solution
+                                                    </h4>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedLanguage(
+                                                                reverseLangMap[
+                                                                    solution
+                                                                        .language
+                                                                ] || "cpp"
+                                                            );
+                                                            setCode(
+                                                                solution.completeCode
+                                                            );
+                                                            setActiveLeftTab(
+                                                                "description"
+                                                            );
+                                                        }}
+                                                        className={`px-3 py-1 rounded-md text-sm ${
+                                                            theme === "dark"
+                                                                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                                                : "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                                                        }`}
+                                                    >
+                                                        Use This Solution
+                                                    </button>
+                                                </div>
+                                                <pre
+                                                    className={`p-4 rounded-md overflow-x-auto ${
+                                                        theme === "dark"
+                                                            ? "bg-gray-900"
+                                                            : "bg-white"
+                                                    }`}
+                                                >
+                                                    <code
+                                                        className={
+                                                            theme === "dark"
+                                                                ? "text-gray-300"
+                                                                : "text-gray-800"
+                                                        }
+                                                    >
+                                                        {solution.completeCode}
+                                                    </code>
+                                                </pre>
+                                            </div>
+                                        )
                                     )}
                             </div>
                         )}
-
                         {activeLeftTab === "editorial" && (
-                            <div className="p-6">
-                                <h2 className="text-xl font-bold mb-4">
-                                    Editorial
-                                </h2>
-                                <Editorial
-                                    secureUrl={problem.secureUrl}
-                                    thumbnailUrl={problem.thumbnailUrl}
-                                    duration={problem.duration}
-                                />
-                            </div>
-                        )}
-
-                        {activeLeftTab === "solutions" && (
-                            <div className="p-6">
-                                <h2 className="text-xl font-bold mb-4">
-                                    Solutions
-                                </h2>
-                                {problem.referenceSolution &&
-                                problem.referenceSolution.length > 0 ? (
-                                    <div className="space-y-6">
-                                        {problem.referenceSolution.map(
-                                            (solution, index) => (
-                                                <div
-                                                    key={index}
-                                                    className={`border rounded-lg overflow-hidden ${
-                                                        theme === "dark"
-                                                            ? "border-gray-700"
-                                                            : "border-gray-200"
-                                                    }`}
-                                                >
-                                                    <div
-                                                        className={`px-4 py-3 border-b ${
-                                                            theme === "dark"
-                                                                ? "bg-gray-800 border-gray-700"
-                                                                : "bg-gray-50 border-gray-200"
-                                                        }`}
-                                                    >
-                                                        <h3 className="font-semibold">
-                                                            {problem.title} -{" "}
-                                                            {solution.language}
-                                                        </h3>
-                                                    </div>
-                                                    <div className="p-4">
-                                                        <pre className="bg-gray-900 text-green-400 p-4 rounded text-sm overflow-x-auto">
-                                                            <code>
-                                                                {
-                                                                    solution.completeCode
-                                                                }
-                                                            </code>
-                                                        </pre>
-                                                    </div>
-                                                </div>
-                                            )
-                                        )}
-                                    </div>
+                            <div className="h-full">
+                                {problem.editorial ? (
+                                    <Editorial problemId={problemId} />
                                 ) : (
-                                    <div className="text-center py-8">
-                                        <div className="text-4xl mb-4">🔒</div>
-                                        <p
-                                            className={
+                                    <div className="flex flex-col items-center justify-center h-full p-8">
+                                        <div
+                                            className={`p-8 rounded-lg text-center max-w-md ${
                                                 theme === "dark"
-                                                    ? "text-gray-400"
-                                                    : "text-gray-500"
-                                            }
+                                                    ? "bg-gray-800"
+                                                    : "bg-gray-50"
+                                            }`}
                                         >
-                                            Solutions will be available after
-                                            you solve the problem.
-                                        </p>
+                                            <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                                            <h3
+                                                className={`text-lg font-medium mb-2 ${
+                                                    theme === "dark"
+                                                        ? "text-gray-200"
+                                                        : "text-gray-700"
+                                                }`}
+                                            >
+                                                Solution Guide Coming Soon
+                                            </h3>
+                                            <p
+                                                className={`text-sm ${
+                                                    theme === "dark"
+                                                        ? "text-gray-400"
+                                                        : "text-gray-600"
+                                                }`}
+                                            >
+                                                We're working on a detailed
+                                                solution guide for this problem.
+                                                In the meantime, you can check
+                                                the "Solutions" tab for
+                                                reference implementations or use
+                                                the AI Help feature for
+                                                guidance.
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         )}
-
                         {activeLeftTab === "submissions" && (
-                            <div className="p-6">
-                                <SubmissionHistory problemId={problemId} />
-                            </div>
+                            <SubmissionHistory problemId={problemId} />
                         )}
-
                         {activeLeftTab === "chatAI" && (
-                            <div className="p-6">
-                                <h2 className="text-xl font-bold mb-4">
-                                    AI Assistant
-                                </h2>
-                                <ChatAi problem={problem} />
+                            <div className="h-full flex flex-col">
+                                <div className="flex-1 overflow-y-auto">
+                                    <div className={`h-full flex flex-col`}>
+                                        <div
+                                            className={`flex-grow p-4 ${
+                                                theme === "dark"
+                                                    ? "bg-gray-800"
+                                                    : "bg-white"
+                                            }`}
+                                        >
+                                            {loading ? (
+                                                <div className="flex items-center justify-center h-full">
+                                                    <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                                                </div>
+                                            ) : !problem ? (
+                                                <div className="flex flex-col items-center justify-center h-full">
+                                                    <XCircle className="w-12 h-12 text-red-500 mb-4" />
+                                                    <p className="text-gray-500">Failed to load problem data</p>
+                                                </div>
+                                            ) : (
+                                                <ChatAi
+                                                    key={problemId}
+                                                    problemId={problemId}
+                                                    code={code}
+                                                    language={selectedLanguage}
+                                                    problemTitle={problem.title || ''}
+                                                    problemDescription={problem.description || ''}
+                                                    examples={problem.examples || []}
+                                                    onError={(error) => {
+                                                        console.error("ChatAI Error:", error);
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                        <div
+                                            className={`p-4 ${
+                                                theme === "dark"
+                                                    ? "bg-gray-900 border-t border-gray-700"
+                                                    : "bg-gray-50 border-t border-gray-200"
+                                            }`}
+                                        >
+                                            <div className="max-w-3xl mx-auto">
+                                                <p
+                                                    className={`text-sm ${
+                                                        theme === "dark"
+                                                            ? "text-gray-400"
+                                                            : "text-gray-600"
+                                                    }`}
+                                                >
+                                                    Ask the AI for help with
+                                                    this problem. You can:
+                                                    <ul className="list-disc ml-5 mt-2 space-y-1">
+                                                        <li>
+                                                            Get hints without
+                                                            complete solutions
+                                                        </li>
+                                                        <li>
+                                                            Ask for explanations
+                                                            of specific concepts
+                                                        </li>
+                                                        <li>Debug your code</li>
+                                                        <li>
+                                                            Learn about
+                                                            different approaches
+                                                        </li>
+                                                    </ul>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Resize Handle */}
+                {/* Right Panel - Code Editor */}
                 <div
-                    ref={resizeRef}
-                    className={`w-1 cursor-col-resize transition-colors ${
-                        theme === "dark"
-                            ? "bg-gray-700 hover:bg-blue-500"
-                            : "bg-gray-300 hover:bg-blue-500"
-                    } ${isResizing ? "bg-blue-500" : ""}`}
-                    onMouseDown={() => setIsResizing(true)}
-                />
-
-                {/* Right Panel */}
-                <div
-                    className={`flex flex-col ${
-                        theme === "dark" ? "bg-gray-850" : "bg-white"
-                    }`}
-                    style={{ width: `${100 - panelSplit}%` }}
+                    style={{ width: `${panelSplit}%` }}
+                    className="flex-1 h-full flex flex-col"
                 >
-                    {/* Right Tabs */}
-                    <div
-                        className={`flex border-b ${
-                            theme === "dark"
-                                ? "border-gray-700 bg-gray-800"
-                                : "border-gray-200 bg-gray-50"
-                        }`}
-                    >
-                        {rightTabs.map((tab) => (
-                            <button
-                                key={tab.key}
-                                className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                                    activeRightTab === tab.key
-                                        ? theme === "dark"
-                                            ? "border-blue-400 text-blue-400 bg-gray-700"
-                                            : "border-blue-500 text-blue-600 bg-white"
-                                        : theme === "dark"
-                                        ? "border-transparent text-gray-400 hover:text-blue-400 hover:bg-gray-700"
-                                        : "border-transparent text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                                }`}
-                                onClick={() => setActiveRightTab(tab.key)}
-                            >
-                                {tab.icon}
-                                <span>{tab.label}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Right Content */}
-                    <div className="flex-1 flex flex-col">
-                        {activeRightTab === "code" && (
-                            <div className="flex-1 flex flex-col">
-                                {/* Code Editor Controls */}
-                                <div
-                                    className={`flex items-center justify-between px-4 py-3 border-b ${
-                                        theme === "dark"
-                                            ? "border-gray-700 bg-gray-800"
-                                            : "border-gray-200 bg-gray-50"
-                                    }`}
-                                >
-                                    <div className="flex items-center space-x-2">
-                                        {["javascript", "java", "cpp"].map(
-                                            (lang) => (
-                                                <button
-                                                    key={lang}
-                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                                        selectedLanguage ===
-                                                        lang
-                                                            ? theme === "dark"
-                                                                ? "bg-blue-600 text-white"
-                                                                : "bg-blue-600 text-white"
-                                                            : theme === "dark"
-                                                            ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                                    }`}
-                                                    onClick={() =>
-                                                        handleLanguageChange(
-                                                            lang
-                                                        )
-                                                    }
-                                                >
-                                                    {lang === "cpp"
-                                                        ? "C++"
-                                                        : lang === "javascript"
-                                                        ? "JavaScript"
-                                                        : "Java"}
-                                                </button>
-                                            )
-                                        )}
-                                    </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <button
-                                            onClick={() =>
-                                                setFontSize(
-                                                    Math.max(10, fontSize - 1)
-                                                )
-                                            }
-                                            className={`p-1.5 rounded transition-colors ${
-                                                theme === "dark"
-                                                    ? "hover:bg-gray-700"
-                                                    : "hover:bg-gray-200"
-                                            }`}
-                                            title="Decrease font size"
-                                        >
-                                            <span className="text-sm">A-</span>
-                                        </button>
-                                        <span className="text-xs px-2">
-                                            {fontSize}px
-                                        </span>
-                                        <button
-                                            onClick={() =>
-                                                setFontSize(
-                                                    Math.min(24, fontSize + 1)
-                                                )
-                                            }
-                                            className={`p-1.5 rounded transition-colors ${
-                                                theme === "dark"
-                                                    ? "hover:bg-gray-700"
-                                                    : "hover:bg-gray-200"
-                                            }`}
-                                            title="Increase font size"
-                                        >
-                                            <span className="text-sm">A+</span>
-                                        </button>
-                                        <button
-                                            onClick={resetCode}
-                                            className={`p-1.5 rounded transition-colors ${
-                                                theme === "dark"
-                                                    ? "hover:bg-gray-700"
-                                                    : "hover:bg-gray-200"
-                                            }`}
-                                            title="Reset code"
-                                        >
-                                            <RotateCcw className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={copyCode}
-                                            className={`p-1.5 rounded transition-colors ${
-                                                theme === "dark"
-                                                    ? "hover:bg-gray-700"
-                                                    : "hover:bg-gray-200"
-                                            }`}
-                                            title="Copy code"
-                                        >
-                                            <Copy className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            className={`p-1.5 rounded transition-colors ${
-                                                theme === "dark"
-                                                    ? "hover:bg-gray-700"
-                                                    : "hover:bg-gray-200"
-                                            }`}
-                                            title="Settings"
-                                        >
-                                            <Settings className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Monaco Editor */}
-                                <div className="flex-1">
-                                    <Editor
-                                        height="100%"
-                                        language={getLanguageForMonaco(
-                                            selectedLanguage
-                                        )}
-                                        value={code}
-                                        onChange={handleEditorChange}
-                                        onMount={handleEditorDidMount}
-                                        theme={
+                    <div className="flex-1 overflow-y-auto">
+                        <div className={`h-full flex flex-col`}>
+                            {/* Main Content Area */}
+                            <div className="flex-1 overflow-y-auto">
+                                {/* Editor Area */}
+                                <div className="h-full flex flex-col">
+                                    {/* Editor Controls */}
+                                    <div
+                                        className={`flex items-center justify-between px-4 py-2 border-b ${
                                             theme === "dark"
-                                                ? "vs-dark"
-                                                : "vs-light"
-                                        }
-                                        options={{
-                                            fontSize: fontSize,
-                                            minimap: { enabled: false },
-                                            scrollBeyondLastLine: false,
-                                            automaticLayout: true,
-                                            tabSize: 2,
-                                            insertSpaces: true,
-                                            wordWrap: "on",
-                                            lineNumbers: "on",
-                                            glyphMargin: false,
-                                            folding: true,
-                                            lineDecorationsWidth: 10,
-                                            lineNumbersMinChars: 3,
-                                            renderLineHighlight: "line",
-                                            selectOnLineNumbers: true,
-                                            roundedSelection: false,
-                                            readOnly: false,
-                                            cursorStyle: "line",
-                                            mouseWheelZoom: true,
-                                            bracketPairColorization: {
-                                                enabled: true,
-                                            },
-                                            suggest: {
-                                                showKeywords: true,
-                                                showSnippets: true,
-                                            },
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div
-                                    className={`flex justify-between items-center px-4 py-3 border-t ${
-                                        theme === "dark"
-                                            ? "border-gray-700 bg-gray-800"
-                                            : "border-gray-200 bg-gray-50"
-                                    }`}
-                                >
-                                    <button
-                                        className={`px-4 py-2 text-sm rounded-lg transition-colors ${
-                                            theme === "dark"
-                                                ? "text-gray-300 hover:text-white hover:bg-gray-700"
-                                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                                                ? "border-gray-700"
+                                                : "border-gray-200"
                                         }`}
-                                        onClick={() =>
-                                            setActiveRightTab("testcase")
-                                        }
                                     >
-                                        Console
-                                    </button>
-                                    <div className="flex space-x-3">
-                                        <button
-                                            className={`flex items-center space-x-2 px-6 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                                                loading &&
-                                                activeRightTab !== "result"
-                                                    ? "opacity-50 cursor-not-allowed"
-                                                    : theme === "dark"
-                                                    ? "border-gray-600 text-gray-300 hover:bg-gray-700"
-                                                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                                            }`}
-                                            onClick={handleRun}
-                                            disabled={loading}
-                                        >
-                                            {loading &&
-                                            activeRightTab !== "result" ? (
-                                                <>
-                                                    <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-transparent rounded-full" />
-                                                    <span>Running...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Play className="w-4 h-4" />
-                                                    <span>Run</span>
-                                                </>
-                                            )}
-                                        </button>
-                                        <button
-                                            className={`flex items-center space-x-2 px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                                loading &&
-                                                activeRightTab === "result"
-                                                    ? "opacity-50 cursor-not-allowed bg-green-600"
-                                                    : "bg-green-600 hover:bg-green-700"
-                                            } text-white`}
-                                            onClick={handleSubmitCode}
-                                            disabled={loading}
-                                        >
-                                            {loading &&
-                                            activeRightTab === "result" ? (
-                                                <>
-                                                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                                                    <span>Submitting...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <CheckCircle className="w-4 h-4" />
-                                                    <span>Submit</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeRightTab === "testcase" && (
-                            <div className="flex-1 flex flex-col">
-                                <div
-                                    className={`p-4 border-b ${
-                                        theme === "dark"
-                                            ? "border-gray-700"
-                                            : "border-gray-200"
-                                    }`}
-                                >
-                                    <h3 className="font-semibold mb-3">
-                                        Custom Input
-                                    </h3>
-                                    <textarea
-                                        className={`w-full p-3 border rounded-lg text-sm font-mono resize-none focus:ring-2 focus:ring-blue-500 ${
-                                            theme === "dark"
-                                                ? "bg-gray-800 border-gray-600 text-white"
-                                                : "bg-white border-gray-300 text-gray-900"
-                                        }`}
-                                        rows="3"
-                                        placeholder="Enter custom input here..."
-                                        value={customInput}
-                                        onChange={(e) =>
-                                            setCustomInput(e.target.value)
-                                        }
-                                    />
-                                </div>
-
-                                <div className="flex-1 p-4 overflow-y-auto">
-                                    <h3 className="font-semibold mb-4">
-                                        Test Results
-                                    </h3>
-                                    {runResult ? (
-                                        <div
-                                            className={`border rounded-lg p-4 ${
-                                                runResult.success
-                                                    ? theme === "dark"
-                                                        ? "border-green-600 bg-green-900/20"
-                                                        : "border-green-300 bg-green-50"
-                                                    : theme === "dark"
-                                                    ? "border-red-600 bg-red-900/20"
-                                                    : "border-red-300 bg-red-50"
-                                            }`}
-                                        >
-                                            {runResult.success ? (
-                                                <div>
-                                                    <div className="flex items-center mb-3">
-                                                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                                                        <h4 className="font-bold text-green-600">
-                                                            All test cases
-                                                            passed!
-                                                        </h4>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                                                        <div
-                                                            className={`p-3 rounded border ${
-                                                                theme === "dark"
-                                                                    ? "bg-gray-800 border-gray-600"
-                                                                    : "bg-white border-gray-200"
-                                                            }`}
-                                                        >
-                                                            <span className="text-gray-500">
-                                                                Runtime:
-                                                            </span>
-                                                            <span className="font-mono ml-2 text-green-600">
-                                                                {
-                                                                    runResult.runtime
-                                                                }{" "}
-                                                                sec
-                                                            </span>
-                                                        </div>
-                                                        <div
-                                                            className={`p-3 rounded border ${
-                                                                theme === "dark"
-                                                                    ? "bg-gray-800 border-gray-600"
-                                                                    : "bg-white border-gray-200"
-                                                            }`}
-                                                        >
-                                                            <span className="text-gray-500">
-                                                                Memory:
-                                                            </span>
-                                                            <span className="font-mono ml-2 text-green-600">
-                                                                {
-                                                                    runResult.memory
-                                                                }{" "}
-                                                                KB
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-3">
-                                                        {runResult.testCases?.map(
-                                                            (tc, i) => (
-                                                                <div
-                                                                    key={i}
-                                                                    className={`p-3 rounded border ${
-                                                                        theme ===
-                                                                        "dark"
-                                                                            ? "bg-gray-800 border-gray-600"
-                                                                            : "bg-white border-gray-200"
-                                                                    }`}
-                                                                >
-                                                                    <div className="text-sm font-mono space-y-2">
-                                                                        <div>
-                                                                            <span className="font-semibold">
-                                                                                Input:
-                                                                            </span>{" "}
-                                                                            <span className="ml-2">
-                                                                                {
-                                                                                    tc.stdin
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="font-semibold">
-                                                                                Expected:
-                                                                            </span>{" "}
-                                                                            <span className="ml-2">
-                                                                                {
-                                                                                    tc.expected_output
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="font-semibold">
-                                                                                Output:
-                                                                            </span>{" "}
-                                                                            <span className="ml-2">
-                                                                                {
-                                                                                    tc.stdout
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="flex items-center">
-                                                                            <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                                                                            <span className="text-green-600">
-                                                                                Passed
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    <div className="flex items-center mb-3">
-                                                        <XCircle className="w-5 h-5 text-red-500 mr-2" />
-                                                        <h4 className="font-bold text-red-600">
-                                                            Test Failed
-                                                        </h4>
-                                                    </div>
-                                                    <div className="space-y-3">
-                                                        {runResult.testCases?.map(
-                                                            (tc, i) => (
-                                                                <div
-                                                                    key={i}
-                                                                    className={`p-3 rounded border ${
-                                                                        theme ===
-                                                                        "dark"
-                                                                            ? "bg-gray-800 border-gray-600"
-                                                                            : "bg-white border-gray-200"
-                                                                    }`}
-                                                                >
-                                                                    <div className="text-sm font-mono space-y-2">
-                                                                        <div>
-                                                                            <span className="font-semibold">
-                                                                                Input:
-                                                                            </span>{" "}
-                                                                            <span className="ml-2">
-                                                                                {
-                                                                                    tc.stdin
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="font-semibold">
-                                                                                Expected:
-                                                                            </span>{" "}
-                                                                            <span className="ml-2">
-                                                                                {
-                                                                                    tc.expected_output
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="font-semibold">
-                                                                                Output:
-                                                                            </span>{" "}
-                                                                            <span className="ml-2">
-                                                                                {
-                                                                                    tc.stdout
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="flex items-center">
-                                                                            {tc.status_id ===
-                                                                            3 ? (
-                                                                                <>
-                                                                                    <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                                                                                    <span className="text-green-600">
-                                                                                        Passed
-                                                                                    </span>
-                                                                                </>
-                                                                            ) : (
-                                                                                <>
-                                                                                    <XCircle className="w-4 h-4 text-red-500 mr-1" />
-                                                                                    <span className="text-red-600">
-                                                                                        Failed
-                                                                                    </span>
-                                                                                </>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-8">
-                                            <Play className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                                            <p
-                                                className={
+                                        <div className="flex items-center space-x-4">
+                                            <select
+                                                value={selectedLanguage}
+                                                onChange={(e) =>
+                                                    handleLanguageChange(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className={`px-3 py-1.5 rounded border ${
                                                     theme === "dark"
-                                                        ? "text-gray-400"
-                                                        : "text-gray-500"
+                                                        ? "bg-gray-800 border-gray-600 text-gray-300"
+                                                        : "bg-white border-gray-300 text-gray-700"
+                                                }`}
+                                            >
+                                                {Object.entries(langMap).map(
+                                                    ([value, label]) => (
+                                                        <option
+                                                            key={value}
+                                                            value={value}
+                                                        >
+                                                            {label}
+                                                        </option>
+                                                    )
+                                                )}
+                                            </select>
+                                            <button
+                                                onClick={resetCode}
+                                                className={`p-1.5 rounded transition-colors ${
+                                                    theme === "dark"
+                                                        ? "hover:bg-gray-700"
+                                                        : "hover:bg-gray-200"
+                                                }`}
+                                                title="Reset code"
+                                            >
+                                                <RotateCcw className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={toggleFullScreen}
+                                                className={`p-1.5 rounded transition-colors ${
+                                                    theme === "dark"
+                                                        ? "hover:bg-gray-700"
+                                                        : "hover:bg-gray-200"
+                                                }`}
+                                                title={
+                                                    isFullScreen
+                                                        ? "Exit fullscreen"
+                                                        : "Fullscreen"
                                                 }
                                             >
-                                                Click "Run" to test your code
-                                                with example test cases
-                                            </p>
+                                                {isFullScreen ? (
+                                                    <Minimize2 className="w-4 h-4" />
+                                                ) : (
+                                                    <Maximize2 className="w-4 h-4" />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={copyCode}
+                                                className={`p-1.5 rounded transition-colors ${
+                                                    theme === "dark"
+                                                        ? "hover:bg-gray-700"
+                                                        : "hover:bg-gray-200"
+                                                }`}
+                                                title="Copy code"
+                                            >
+                                                <Copy className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                className={`p-1.5 rounded transition-colors ${
+                                                    theme === "dark"
+                                                        ? "hover:bg-gray-700"
+                                                        : "hover:bg-gray-200"
+                                                }`}
+                                                title="Settings"
+                                            >
+                                                <Settings className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                                    </div>
 
-                        {activeRightTab === "result" && (
-                            <div className="flex-1 p-4 overflow-y-auto">
-                                <h3 className="font-semibold mb-4">
-                                    Submission Result
-                                </h3>
-                                {submitResult ? (
-                                    <div
-                                        className={`border rounded-lg p-6 ${
-                                            submitResult.accepted
-                                                ? theme === "dark"
-                                                    ? "border-green-600 bg-green-900/20"
-                                                    : "border-green-300 bg-green-50"
-                                                : theme === "dark"
-                                                ? "border-red-600 bg-red-900/20"
-                                                : "border-red-300 bg-red-50"
-                                        }`}
-                                    >
-                                        {submitResult.accepted ? (
-                                            <div className="text-center">
-                                                <div className="text-6xl mb-4">
-                                                    🎉
+                                    {/* Monaco Editor */}
+                                    <div className="flex-1 min-h-[500px]">
+                                        <Editor
+                                            height="100%"
+                                            language={getLanguageForMonaco(
+                                                selectedLanguage
+                                            )}
+                                            value={code}
+                                            onChange={handleEditorChange}
+                                            onMount={handleEditorDidMount}
+                                            theme={
+                                                theme === "dark"
+                                                    ? "vs-dark"
+                                                    : "vs-light"
+                                            }
+                                            options={{
+                                                fontSize: fontSize,
+                                                minimap: {
+                                                    enabled: true,
+                                                    scale: 0.8,
+                                                },
+                                                scrollBeyondLastLine: false,
+                                                automaticLayout: true,
+                                                tabSize: 4,
+                                                insertSpaces: true,
+                                                wordWrap: "on",
+                                                lineNumbers: "on",
+                                                glyphMargin: true,
+                                                folding: true,
+                                                foldingStrategy: "indentation",
+                                                lineDecorationsWidth: 10,
+                                                lineNumbersMinChars: 3,
+                                                renderLineHighlight: "all",
+                                                selectOnLineNumbers: true,
+                                                roundedSelection: true,
+                                                readOnly: false,
+                                                cursorStyle: "line",
+                                                mouseWheelZoom: true,
+                                                scrollbar: {
+                                                    vertical: "visible",
+                                                    horizontal: "visible",
+                                                    useShadows: true,
+                                                    verticalScrollbarSize: 12,
+                                                    horizontalScrollbarSize: 12,
+                                                    verticalHasArrows: true,
+                                                    horizontalHasArrows: true,
+                                                    arrowSize: 14,
+                                                },
+                                                bracketPairColorization: {
+                                                    enabled: true,
+                                                    independentColorPoolPerBracketType: true,
+                                                },
+                                                guides: {
+                                                    bracketPairs: true,
+                                                    indentation: true,
+                                                    highlightActiveIndentation: true,
+                                                    highlightActiveBracketPair: true,
+                                                },
+                                                suggest: {
+                                                    showKeywords: true,
+                                                    showSnippets: true,
+                                                    preview: true,
+                                                    showIcons: true,
+                                                    maxVisibleSuggestions: 12,
+                                                },
+                                                hover: {
+                                                    enabled: true,
+                                                    delay: 200,
+                                                    sticky: true,
+                                                },
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Test Cases and Results Panel */}
+                                    {activeRightTab !== "code" && (
+                                        <div
+                                            className={`border-t ${
+                                                theme === "dark"
+                                                    ? "border-gray-700 bg-gray-800"
+                                                    : "border-gray-200 bg-gray-50"
+                                            } p-4`}
+                                        >
+                                            {activeRightTab === "testcase" && (
+                                                <div className="space-y-4">
+                                                    <div className="sticky top-0 bg-inherit z-10 pb-4">
+                                                        <label
+                                                            className={`block text-sm font-medium ${
+                                                                theme === "dark"
+                                                                    ? "text-gray-300"
+                                                                    : "text-gray-700"
+                                                            } mb-2`}
+                                                        >
+                                                            Custom Input
+                                                        </label>
+                                                        <textarea
+                                                            value={customInput}
+                                                            onChange={(e) =>
+                                                                setCustomInput(
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            className={`w-full h-32 p-3 rounded-lg border font-mono text-sm ${
+                                                                theme === "dark"
+                                                                    ? "bg-gray-700 border-gray-600 text-gray-100"
+                                                                    : "bg-white border-gray-300 text-gray-900"
+                                                            }`}
+                                                            placeholder="Enter your test case input here..."
+                                                        />
+                                                    </div>
+                                                    {runResult && (
+                                                        <div
+                                                            className={`mt-4 p-4 rounded-lg ${
+                                                                runResult.success
+                                                                    ? theme ===
+                                                                      "dark"
+                                                                        ? "bg-green-900/20"
+                                                                        : "bg-green-50"
+                                                                    : theme ===
+                                                                      "dark"
+                                                                    ? "bg-red-900/20"
+                                                                    : "bg-red-50"
+                                                            }`}
+                                                        >
+                                                            <h3
+                                                                className={`text-sm font-medium ${
+                                                                    runResult.success
+                                                                        ? "text-green-500"
+                                                                        : "text-red-500"
+                                                                }`}
+                                                            >
+                                                                {runResult.success
+                                                                    ? "Test Case Passed"
+                                                                    : "Test Case Failed"}
+                                                            </h3>
+                                                            {runResult.output && (
+                                                                <div className="mt-2">
+                                                                    <p
+                                                                        className={`text-sm ${
+                                                                            theme ===
+                                                                            "dark"
+                                                                                ? "text-gray-300"
+                                                                                : "text-gray-700"
+                                                                        }`}
+                                                                    >
+                                                                        Output:
+                                                                    </p>
+                                                                    <pre
+                                                                        className={`mt-1 p-2 rounded ${
+                                                                            theme ===
+                                                                            "dark"
+                                                                                ? "bg-gray-800"
+                                                                                : "bg-gray-100"
+                                                                        }`}
+                                                                    >
+                                                                        {
+                                                                            runResult.output
+                                                                        }
+                                                                    </pre>
+                                                                </div>
+                                                            )}
+                                                            {runResult.error && (
+                                                                <div className="mt-2">
+                                                                    <p className="text-sm text-red-500">
+                                                                        Error:
+                                                                    </p>
+                                                                    <pre
+                                                                        className={`mt-1 p-2 rounded ${
+                                                                            theme ===
+                                                                            "dark"
+                                                                                ? "bg-gray-800"
+                                                                                : "bg-gray-100"
+                                                                        } text-red-500`}
+                                                                    >
+                                                                        {
+                                                                            runResult.error
+                                                                        }
+                                                                    </pre>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <h4 className="font-bold text-2xl text-green-600 mb-4">
-                                                    Accepted!
-                                                </h4>
-                                                <div className="grid grid-cols-1 gap-4 text-sm">
+                                            )}
+                                            {activeRightTab === "result" &&
+                                                submitResult && (
                                                     <div
-                                                        className={`p-4 rounded border ${
-                                                            theme === "dark"
-                                                                ? "bg-gray-800 border-gray-600"
-                                                                : "bg-white border-gray-200"
+                                                        className={`p-4 rounded-lg ${
+                                                            submitResult.accepted
+                                                                ? theme ===
+                                                                  "dark"
+                                                                    ? "bg-green-900/20"
+                                                                    : "bg-green-50"
+                                                                : theme ===
+                                                                  "dark"
+                                                                ? "bg-red-900/20"
+                                                                : "bg-red-50"
                                                         }`}
                                                     >
-                                                        <div className="font-semibold mb-2">
-                                                            Test Cases
-                                                        </div>
-                                                        <div className="text-lg font-mono text-green-600">
-                                                            {
-                                                                submitResult.passedTestCases
-                                                            }
-                                                            /
-                                                            {
-                                                                submitResult.totalTestCases
-                                                            }{" "}
-                                                            passed
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div
-                                                            className={`p-4 rounded border ${
-                                                                theme === "dark"
-                                                                    ? "bg-gray-800 border-gray-600"
-                                                                    : "bg-white border-gray-200"
+                                                        <h3
+                                                            className={`text-lg font-medium ${
+                                                                submitResult.accepted
+                                                                    ? "text-green-500"
+                                                                    : "text-red-500"
                                                             }`}
                                                         >
-                                                            <div className="font-semibold mb-2">
-                                                                Runtime
+                                                            {submitResult.accepted
+                                                                ? "Solution Accepted!"
+                                                                : "Solution Failed"}
+                                                        </h3>
+                                                        {submitResult.stats && (
+                                                            <div className="mt-4 grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <p
+                                                                        className={`text-sm ${
+                                                                            theme ===
+                                                                            "dark"
+                                                                                ? "text-gray-400"
+                                                                                : "text-gray-600"
+                                                                        }`}
+                                                                    >
+                                                                        Runtime
+                                                                    </p>
+                                                                    <p
+                                                                        className={`text-lg font-medium ${
+                                                                            theme ===
+                                                                            "dark"
+                                                                                ? "text-gray-300"
+                                                                                : "text-gray-900"
+                                                                        }`}
+                                                                    >
+                                                                        {
+                                                                            submitResult
+                                                                                .stats
+                                                                                .runtime
+                                                                        }
+                                                                        ms
+                                                                    </p>
+                                                                </div>
+                                                                <div>
+                                                                    <p
+                                                                        className={`text-sm ${
+                                                                            theme ===
+                                                                            "dark"
+                                                                                ? "text-gray-400"
+                                                                                : "text-gray-600"
+                                                                        }`}
+                                                                    >
+                                                                        Memory
+                                                                    </p>
+                                                                    <p
+                                                                        className={`text-lg font-medium ${
+                                                                            theme ===
+                                                                            "dark"
+                                                                                ? "text-gray-300"
+                                                                                : "text-gray-900"
+                                                                        }`}
+                                                                    >
+                                                                        {
+                                                                            submitResult
+                                                                                .stats
+                                                                                .memory
+                                                                        }
+                                                                        MB
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                            <div className="font-mono text-green-600">
-                                                                {
-                                                                    submitResult.runtime
-                                                                }{" "}
-                                                                sec
+                                                        )}
+                                                        {submitResult.error && (
+                                                            <div className="mt-4">
+                                                                <p className="text-sm text-red-500">
+                                                                    Error:
+                                                                </p>
+                                                                <pre
+                                                                    className={`mt-1 p-2 rounded ${
+                                                                        theme ===
+                                                                        "dark"
+                                                                            ? "bg-gray-800"
+                                                                            : "bg-gray-100"
+                                                                    } text-red-500`}
+                                                                >
+                                                                    {
+                                                                        submitResult.error
+                                                                    }
+                                                                </pre>
                                                             </div>
-                                                        </div>
-                                                        <div
-                                                            className={`p-4 rounded border ${
-                                                                theme === "dark"
-                                                                    ? "bg-gray-800 border-gray-600"
-                                                                    : "bg-white border-gray-200"
-                                                            }`}
-                                                        >
-                                                            <div className="font-semibold mb-2">
-                                                                Memory
-                                                            </div>
-                                                            <div className="font-mono text-green-600">
-                                                                {
-                                                                    submitResult.memory
-                                                                }{" "}
-                                                                KB
-                                                            </div>
-                                                        </div>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="text-center">
-                                                <div className="text-6xl mb-4">
-                                                    ❌
-                                                </div>
-                                                <h4 className="font-bold text-2xl text-red-600 mb-4">
-                                                    {submitResult.error ||
-                                                        "Wrong Answer"}
-                                                </h4>
-                                                <div
-                                                    className={`p-4 rounded border ${
-                                                        theme === "dark"
-                                                            ? "bg-gray-800 border-gray-600"
-                                                            : "bg-white border-gray-200"
-                                                    }`}
-                                                >
-                                                    <div className="font-semibold mb-2">
-                                                        Test Cases
-                                                    </div>
-                                                    <div className="text-lg font-mono text-red-600">
-                                                        {
-                                                            submitResult.passedTestCases
-                                                        }
-                                                        /
-                                                        {
-                                                            submitResult.totalTestCases
-                                                        }{" "}
-                                                        passed
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                                        <p
-                                            className={
+                                                )}
+                                        </div>
+                                    )}
+
+                                    {/* Action Buttons */}
+                                    <div
+                                        className={`flex justify-between items-center px-4 py-3 border-t ${
+                                            theme === "dark"
+                                                ? "border-gray-700 bg-gray-800"
+                                                : "border-gray-200 bg-gray-50"
+                                        }`}
+                                    >
+                                        <button
+                                            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
                                                 theme === "dark"
-                                                    ? "text-gray-400"
-                                                    : "text-gray-500"
+                                                    ? "text-gray-300 hover:text-white hover:bg-gray-700"
+                                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                                            }`}
+                                            onClick={() =>
+                                                setActiveRightTab("testcase")
                                             }
                                         >
-                                            Click "Submit" to submit your
-                                            solution for evaluation
-                                        </p>
+                                            Console
+                                        </button>
+                                        <div className="flex space-x-3">
+                                            <button
+                                                className={`flex items-center space-x-2 px-6 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                                                    runLoading
+                                                        ? "opacity-50 cursor-not-allowed"
+                                                        : theme === "dark"
+                                                        ? "border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500"
+                                                        : "border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                                                }`}
+                                                onClick={handleRun}
+                                                disabled={runLoading}
+                                            >
+                                                {runLoading ? (
+                                                    <>
+                                                        <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-transparent rounded-full" />
+                                                        <span>Running...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Play className="w-4 h-4" />
+                                                        <span>Run Code</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                            <button
+                                                className={`flex items-center space-x-2 px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                    submitLoading
+                                                        ? "opacity-75 cursor-not-allowed bg-green-600"
+                                                        : "bg-green-600 hover:bg-green-700 shadow-md hover:shadow-lg"
+                                                } text-white transform hover:-translate-y-0.5`}
+                                                onClick={handleSubmitCode}
+                                                disabled={submitLoading}
+                                            >
+                                                {submitLoading ? (
+                                                    <>
+                                                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                                                        <span>
+                                                            Submitting...
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <CheckCircle className="w-4 h-4" />
+                                                        <span>
+                                                            Submit Solution
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
-                                )}
+                                </div>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </div>

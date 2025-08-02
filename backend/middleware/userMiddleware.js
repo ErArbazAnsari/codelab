@@ -31,8 +31,9 @@ const userMiddleware = async (req, res, next) => {
                             res.cookie('token', newToken, {
                                 httpOnly: true,
                                 secure: process.env.NODE_ENV === 'production',
-                                sameSite: 'lax',
-                                maxAge: 60 * 60 * 1000 // 1 hour
+                                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                                maxAge: 60 * 60 * 1000, // 1 hour
+                                domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
                             });
                             payload = jwt.verify(newToken, process.env.JWT_KEY);
                         }
